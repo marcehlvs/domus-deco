@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ShoppingBag } from "lucide-react";
 import { Button, LinkButton } from "../components/ui/Button";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
 import { fetchProduct, type Product } from "../data/products";
@@ -119,6 +119,7 @@ function ProductView({ product }: { product: Product }) {
             setAdded((n) => n + 1);
           }}
         >
+          <ShoppingBag aria-hidden className="size-5" />
           Agregar al carrito
         </Button>
         {added > 0 && (

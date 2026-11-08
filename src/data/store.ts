@@ -1,11 +1,12 @@
 // Datos del negocio en un solo lugar. Footer y Home leen de acá.
-// Contacto: completá lo que tengas y aparece solo en el pie. Lo vacío no se muestra.
+// Redes y contacto: completá lo que tengas y aparece solo en el pie. Lo vacío no se muestra.
 export const store = {
   name: "Domus Deco",
   tagline: "Blanquería para tu casa.",
   contact: {
     whatsapp: "", // solo dígitos con código de país, ej. 5491112345678
     instagram: "", // usuario sin @
+    facebook: "", // nombre de la página, el que aparece en facebook.com/…
     email: "",
   },
   // Textos de ejemplo: confirmá que reflejan tus condiciones reales.

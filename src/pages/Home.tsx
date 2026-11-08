@@ -66,7 +66,7 @@ export default function Home() {
   return (
     <div className="space-y-12 md:space-y-16">
       <section className="relative overflow-hidden rounded-card border border-line bg-surface">
-        <svg aria-hidden viewBox="0 0 320 260" className="curl absolute right-0 top-0 w-1/2 max-w-sm">
+        <svg aria-hidden viewBox="0 0 320 260" className="curl absolute right-0 top-0 w-2/5 max-w-60">
           <defs>
             <linearGradient id="curl" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0" stopColor="#ecc59a" />
@@ -76,9 +76,9 @@ export default function Home() {
           <path d="M320 0H110c20 52 86 92 210 88z" fill="url(#curl)" />
           <path d="M320 88c-70 6-120-12-150-46 8 50 56 96 150 100z" className="fill-surface" opacity=".92" />
         </svg>
-        <div className="relative flex max-w-lg flex-col items-start gap-5 px-6 pb-12 pt-32 md:px-12 md:py-24 xl:py-32">
-          <h1 className="text-4xl leading-tight md:text-5xl xl:text-6xl">Blanquería para que la casa se sienta hogar</h1>
-          <p className="font-display text-xl italic text-muted">Domus: del latín, «casa».</p>
+        <div className="relative flex max-w-xl flex-col items-start gap-4 px-6 pb-8 pt-24 md:px-12 md:py-14 xl:py-16">
+          <h1 className="text-3xl leading-tight md:text-4xl xl:text-5xl">Blanquería para que la casa se sienta hogar</h1>
+          <p className="font-display text-lg italic text-muted md:text-xl">Domus: del latín, «casa».</p>
           <LinkButton to="/tienda" size="lg">
             Ver la tienda
           </LinkButton>

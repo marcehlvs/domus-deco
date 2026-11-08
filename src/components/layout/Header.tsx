@@ -9,6 +9,8 @@ import { cn } from "../../lib/cn";
 const links = [
   { to: "/", label: "Inicio" },
   { to: "/tienda", label: "Tienda" },
+  // Visible solo en desarrollo hasta que exista el ingreso de administradores (paso 5).
+  ...(import.meta.env.DEV ? [{ to: "/admin", label: "Admin" }] : []),
 ];
 
 const iconBtn = "relative inline-flex size-11 items-center justify-center rounded-control text-ink hover:bg-alt";
@@ -46,7 +48,7 @@ export default function Header() {
 
         <nav aria-label="Principal" className="mr-auto hidden gap-1 md:flex">
           {links.map((l) => (
-            <NavLink key={l.to} to={l.to} end className={navLink}>
+            <NavLink key={l.to} to={l.to} end={l.to !== "/admin"} className={navLink}>
               {l.label}
             </NavLink>
           ))}
@@ -102,7 +104,7 @@ export default function Header() {
             className="flex flex-col border-t border-line bg-bg px-4 py-2 md:hidden"
           >
             {links.map((l) => (
-              <NavLink key={l.to} to={l.to} end className={navLink} onClick={() => setOpen(false)}>
+              <NavLink key={l.to} to={l.to} end={l.to !== "/admin"} className={navLink} onClick={() => setOpen(false)}>
                 {l.label}
               </NavLink>
             ))}

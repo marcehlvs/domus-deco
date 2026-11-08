@@ -19,7 +19,7 @@ export function ProductCard({ product }: { product: Product }) {
           className="aspect-4/3 w-full object-cover"
         />
         <div className="space-y-1 p-4">
-          <p className="text-sm text-muted">{product.brand}</p>
+          {product.brand && <p className="text-sm text-muted">{product.brand}</p>}
           <p className="font-medium leading-snug">{product.name}</p>
           <p className="pt-1 text-lg font-bold">{formatPrice(product.price)}</p>
         </div>

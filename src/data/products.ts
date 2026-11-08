@@ -19,10 +19,14 @@ export interface Product {
   description: string;
   sizes: string[];
   colors: Swatch[];
+  /** false = oculto en la tienda. Sin valor se considera activo. */
+  active?: boolean;
+  /** true = cargado desde el panel de administración (los de muestra viven en el código). */
+  custom?: boolean;
 }
 
-// Para sumar un producto: copiá un objeto, poné la foto en src/assets/products/ y listo.
-export const products: Product[] = [
+// Productos de muestra. Los productos reales se cargan desde /admin/productos.
+const seedProducts: Product[] = [
   {
     id: "cacharel-cover-quilt",
     slug: "cover-quilt-doble-faz-cacharel",
@@ -69,7 +73,69 @@ export const products: Product[] = [
 
 const delay = <T>(value: T) => new Promise<T>((resolve) => setTimeout(() => resolve(value), 350));
 
-// Paso 5: estas dos funciones pasan a leer de Firestore y nadie que las use cambia.
+// Modo demostración: los productos cargados desde el panel se guardan en este navegador.
+// Paso 5: esta sección pasa a Firestore y las firmas de las funciones no cambian.
+const STORAGE_KEY = "domus-products-v1";
+
+function readCustom(): Product[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as Product[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Puede fallar (por ejemplo, si el navegador se quedó sin espacio): quien llama lo maneja.
+const writeCustom = (list: Product[]) => localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+
+const everything = () => [...seedProducts, ...readCustom()];
+const isVisible = (p: Product) => p.active !== false;
+
+// ---------- Tienda ----------
 export const fetchProducts = (category?: string) =>
-  delay(category ? products.filter((p) => p.category === category) : products);
-export const fetchProduct = (slug: string) => delay(products.find((p) => p.slug === slug) ?? null);
+  delay(everything().filter((p) => isVisible(p) && (!category || p.category === category)));
+export const fetchProduct = (slug: string) => delay(everything().find((p) => p.slug === slug && isVisible(p)) ?? null);
+
+// ---------- Administración ----------
+export type ProductInput = Omit<Product, "id" | "slug" | "custom">;
+
+export const fetchAdminProducts = () => delay(everything());
+export const fetchAdminProduct = (id: string) => delay(everything().find((p) => p.id === id) ?? null);
+
+const slugify = (text: string) =>
+  text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+export async function saveProduct(input: ProductInput, id?: string): Promise<Product> {
+  await delay(null);
+  const custom = readCustom();
+  if (id) {
+    const current = custom.find((p) => p.id === id);
+    if (!current) throw new Error("not-found");
+    const updated: Product = { ...current, ...input };
+    writeCustom(custom.map((p) => (p.id === id ? updated : p)));
+    return updated;
+  }
+  const taken = new Set(everything().flatMap((p) => [p.id, p.slug]));
+  const base = slugify(input.name) || "producto";
+  let slug = base;
+  for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
+  const created: Product = { ...input, id: slug, slug, custom: true };
+  writeCustom([...custom, created]);
+  return created;
+}
+
+export async function setProductActive(id: string, active: boolean) {
+  await delay(null);
+  writeCustom(readCustom().map((p) => (p.id === id ? { ...p, active } : p)));
+}
+
+export async function removeProduct(id: string) {
+  await delay(null);
+  writeCustom(readCustom().filter((p) => p.id !== id));
+}

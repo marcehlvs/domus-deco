@@ -81,7 +81,7 @@ function ProductView({ product }: { product: Product }) {
       />
       <div className="space-y-6">
         <div className="space-y-1">
-          <p className="text-muted">{product.brand}</p>
+          {product.brand && <p className="text-muted">{product.brand}</p>}
           <h1 className="text-3xl md:text-4xl">{product.name}</h1>
           <p className="pt-2 text-2xl font-bold">{formatPrice(product.price)}</p>
         </div>

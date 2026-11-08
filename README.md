@@ -8,6 +8,7 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 - [x] **Paso 2** · Layout responsive (375 / 768 / 1280+), header con menú móvil, footer, rutas base
 - [x] **Paso 3** · Catálogo con filtro por categoría y detalle de producto (loading / empty / error), con datos locales
 - [x] **Paso 4** · Carrito (Zustand + localStorage; guarda producto, medida, color y cantidad; precio y foto salen del catálogo)
+- [x] **Extra** · Panel de administración en modo demostración (`/admin`): dashboard de ingresos, carga de productos a mano y pedidos. Datos en el navegador hasta el paso 5
 - [ ] **Paso 5** · Auth con Firebase (login, registro, rutas protegidas), catálogo en Firestore y carrito sincronizado al loguearse
 - [ ] **Paso 6** · Checkout y pedidos en Firestore (estado «pendiente de pago»)
 - [ ] **Paso 7** · Deploy en Firebase Hosting
@@ -32,10 +33,12 @@ src/
   lib/                 cn, theme (modo oscuro), format (precios), useAsync (loading/error/success)
   components/product/  ProductCard (+ productGrid, la grilla compartida)
   components/store/    Perks (envíos, cambios y pagos)
+  components/admin/    AdminGuard, AdminLayout, BarChart, OrderStatusBadge, DemoOrders
   components/ui/       ... + Toast (aviso al agregar al carrito)
   store/               cart (Zustand + localStorage), toast
   data/                categories, products (datos locales + fetch asíncrono) y store (contacto y beneficios)
   assets/products/     fotos de productos
+  pages/admin/         Dashboard, ProductsAdmin, ProductForm, OrdersAdmin
   pages/               Home, Shop, Cart, ProductDetail, Pending (secciones futuras), Styleguide
   index.css            tokens (única fuente de verdad)
 ```
@@ -57,9 +60,20 @@ src/
 - **Ficha de producto en mobile**: barra fija abajo con precio y «Agregar al carrito». En 768+ vuelve el botón dentro de la ficha. Solo hay uno visible a la vez.
 - **Aviso al agregar**: `Toast` con `role="status"`, se cierra solo a los 5 s y respeta `prefers-reduced-motion`.
 
+## Panel de administración
+
+Entrá a `/admin` con `npm run dev` (hay un link «Admin» en la barra). En producción muestra «Acceso restringido» hasta que exista el ingreso de administradores (paso 5), así no queda abierto al publicar.
+
+- **Panel**: ingresos, pedidos cobrados, ticket promedio, pendientes de pago, ingresos por día (7/30/90 días) y más vendidos. Solo cuentan como ingreso los pedidos *pagado* y *enviado*.
+- **Productos**: alta, edición, ocultar/mostrar y eliminar. La foto se sube desde el equipo (se achica en el navegador) o se pega una URL. Los productos de muestra viven en el código y no se editan desde el panel.
+- **Pedidos**: lista con filtro por estado y cambio de estado.
+- **Datos de ejemplo**: en desarrollo, el botón «Cargar pedidos de ejemplo» llena el dashboard. Se marcan como «Ejemplo» y se borran sin tocar los reales.
+
+Por ahora productos y pedidos se guardan en `localStorage`. Las funciones de `src/data/products.ts` y `src/data/orders.ts` ya son asíncronas con la firma final: en el paso 5 se reemplaza su interior por Firestore sin tocar las pantallas. El checkout (paso 6) llama a `createOrder`.
+
 ## Cómo agregar un producto
 
-Copiá un objeto en `src/data/products.ts`, poné la foto en `src/assets/products/` y listo. Las funciones `fetchProducts` y `fetchProduct` son asíncronas a propósito: en el paso 5 pasan a leer de Firestore sin tocar las pantallas.
+Desde `/admin/productos` con «Nuevo producto». (Los de muestra se siguen agregando copiando un objeto en `seedProducts` de `src/data/products.ts`.) Las funciones `fetchProducts` y `fetchProduct` son asíncronas a propósito: en el paso 5 pasan a leer de Firestore sin tocar las pantallas.
 
 ## Pendiente para Firebase
 

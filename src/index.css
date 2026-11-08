@@ -1,0 +1,101 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------- Tokens: identidad del logo (papel, tinta, caramelo) ---------- */
+:root {
+  --bg: #f4f0ea;
+  --surface: #fbf9f6;
+  --alt: #ebe5db;
+  --line: #ddd5ca;
+  --ink: #161412;
+  --muted: #5e564d;
+  --primary: #161412;
+  --on-primary: #f4f0ea;
+  --accent: #d3955a;
+  --on-accent: #161412;
+  --success: #2f6b48;
+  --danger: #a3341f;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #151311;
+  --surface: #1e1b18;
+  --alt: #27231f;
+  --line: #352f28;
+  --ink: #f1ebe2;
+  --muted: #b5aa9c;
+  --primary: #f1ebe2;
+  --on-primary: #151311;
+  --accent: #d9a06a;
+  --on-accent: #161412;
+  --success: #7cc79b;
+  --danger: #f0a090;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-alt: var(--alt);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+
+  --font-display: "Playfair Display Variable", Georgia, serif;
+  --font-sans: "Jost Variable", system-ui, sans-serif;
+
+  --radius-control: 0.25rem;
+  --radius-card: 0.5rem;
+
+  --shadow-card: 0 1px 2px rgb(22 20 18 / 0.05);
+  --shadow-pop: 0 12px 32px rgb(22 20 18 / 0.25);
+}
+
+@layer base {
+  body {
+    @apply bg-bg font-sans text-ink antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display font-medium;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+  }
+}
+
+/* Única animación de carga: la curva de papel del logo se despliega */
+.curl {
+  animation: unroll 0.9s ease-out;
+}
+@keyframes unroll {
+  from {
+    opacity: 0;
+    transform: translate(36px, -36px) scale(0.92);
+  }
+}
+
+dialog[open] {
+  animation: pop 0.18s ease-out;
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog[open],
+  .curl {
+    animation: none;
+  }
+}

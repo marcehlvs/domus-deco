@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, ShoppingBag } from "lucide-react";
 import { Button, LinkButton } from "../components/ui/Button";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
 import { fetchProduct, type Product } from "../data/products";
 import { formatPrice } from "../lib/format";
 import { useAsync } from "../lib/useAsync";
 import { useCart } from "../store/cart";
+import { useToast } from "../store/toast";
 
 const back = (
   <Link to="/tienda" className="inline-flex min-h-11 items-center gap-2 rounded-control text-muted hover:text-ink">
@@ -63,7 +64,11 @@ function ProductView({ product }: { product: Product }) {
   const [size, setSize] = useState(product.sizes[0]);
   const [color, setColor] = useState(product.colors[0].name);
   const add = useCart((s) => s.add);
-  const [added, setAdded] = useState(0);
+  const show = useToast((s) => s.show);
+  const addToCart = () => {
+    add(product, size, color);
+    show("Agregado al carrito", { to: "/carrito", label: "Ver carrito" });
+  };
 
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,26rem)_1fr] md:gap-10">
@@ -111,26 +116,18 @@ function ProductView({ product }: { product: Product }) {
           </div>
         </fieldset>
 
-        <Button
-          size="lg"
-          className="w-full md:w-auto"
-          onClick={() => {
-            add(product, size, color);
-            setAdded((n) => n + 1);
-          }}
-        >
+        <Button size="lg" className="hidden md:inline-flex" onClick={addToCart}>
           <ShoppingBag aria-hidden className="size-5" />
           Agregar al carrito
         </Button>
-        {added > 0 && (
-          <div key={added} role="status" className="flex flex-wrap items-center gap-3 text-success">
-            <CheckCircle2 aria-hidden className="size-5" />
-            <span>Agregado al carrito.</span>
-            <Link to="/carrito" className="font-medium text-ink underline">
-              Ver carrito
-            </Link>
-          </div>
-        )}
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-4 border-t border-line bg-bg/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:hidden">
+        <p className="text-xl font-bold">{formatPrice(product.price)}</p>
+        <Button size="lg" className="flex-1" onClick={addToCart}>
+          <ShoppingBag aria-hidden className="size-5" />
+          Agregar al carrito
+        </Button>
       </div>
     </div>
   );

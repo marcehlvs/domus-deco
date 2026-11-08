@@ -30,9 +30,11 @@ src/
   components/ui/       Button, Card, Input, Modal, StatePanel (+ Skeleton)
   components/layout/   Layout, Header, Footer
   lib/                 cn, theme (modo oscuro), format (precios), useAsync (loading/error/success)
-  components/product/  ProductCard
-  store/               cart (Zustand + localStorage)
-  data/                categories y products (datos locales + fetch asíncrono)
+  components/product/  ProductCard (+ productGrid, la grilla compartida)
+  components/store/    Perks (envíos, cambios y pagos)
+  components/ui/       ... + Toast (aviso al agregar al carrito)
+  store/               cart (Zustand + localStorage), toast
+  data/                categories, products (datos locales + fetch asíncrono) y store (contacto y beneficios)
   assets/products/     fotos de productos
   pages/               Home, Shop, Cart, ProductDetail, Pending (secciones futuras), Styleguide
   index.css            tokens (única fuente de verdad)
@@ -50,6 +52,10 @@ src/
 - **Accesibilidad**: enlace «Saltar al contenido», `aria-label` en botones de ícono, foco visible, objetivos táctiles de 44 px, `aria-current` en navegación, `<dialog>` nativo en el modal (foco atrapado y Esc incluidos), `prefers-reduced-motion` respetado.
 - **Animaciones**: con `motion` (la base de los componentes de EasyUI), solo donde responden a una acción o en una entrada única en el hero.
 - **Estados**: `StatePanel` cubre empty / error / success / loading y `Skeleton` queda listo para el catálogo.
+
+- **Datos del negocio**: `src/data/store.ts` guarda contacto (WhatsApp, Instagram, email) y los textos de envíos / cambios / pagos. El pie y el Home leen de ahí; lo que esté vacío no se muestra.
+- **Ficha de producto en mobile**: barra fija abajo con precio y «Agregar al carrito». En 768+ vuelve el botón dentro de la ficha. Solo hay uno visible a la vez.
+- **Aviso al agregar**: `Toast` con `role="status"`, se cierra solo a los 5 s y respeta `prefers-reduced-motion`.
 
 ## Cómo agregar un producto
 

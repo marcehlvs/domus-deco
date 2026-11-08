@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu, Moon, ShoppingBag, Sun, User, X } from "lucide-react";
@@ -22,6 +22,14 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const { theme, toggle } = useTheme();
   const cartCount = useCart(selectCount);
+
+  // El contador "late" solo cuando se suma algo, no al cargar la página.
+  const prevCount = useRef(cartCount);
+  const [pulse, setPulse] = useState(0);
+  useEffect(() => {
+    if (cartCount > prevCount.current) setPulse((n) => n + 1);
+    prevCount.current = cartCount;
+  }, [cartCount]);
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur">
@@ -58,9 +66,16 @@ export default function Header() {
         <Link to="/carrito" className={iconBtn} aria-label={`Carrito, ${cartCount} productos`}>
           <ShoppingBag aria-hidden className="size-5" />
           {cartCount > 0 && (
-            <span aria-hidden className="absolute right-1 top-1 min-w-5 rounded-full bg-accent px-1 text-center text-xs font-bold text-on-accent">
+            <motion.span
+              key={pulse}
+              aria-hidden
+              initial={pulse ? { scale: 1.5 } : false}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 500, damping: 18 }}
+              className="absolute right-1 top-1 min-w-5 rounded-full bg-accent px-1 text-center text-xs font-bold text-on-accent"
+            >
               {cartCount}
-            </span>
+            </motion.span>
           )}
         </Link>
         <button

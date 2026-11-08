@@ -1,12 +1,10 @@
 import { useSearchParams } from "react-router-dom";
-import { ProductCard } from "../components/product/ProductCard";
+import { ProductCard, productGrid as grid } from "../components/product/ProductCard";
 import { Button, LinkButton } from "../components/ui/Button";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
 import { categories } from "../data/categories";
 import { fetchProducts } from "../data/products";
 import { useAsync } from "../lib/useAsync";
-
-const grid = "grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4";
 
 export default function Shop() {
   const [params] = useSearchParams();

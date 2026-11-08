@@ -3,6 +3,9 @@ import { Card } from "../ui/Card";
 import { formatPrice } from "../../lib/format";
 import type { Product } from "../../data/products";
 
+// Misma grilla en Tienda y en Destacados del Home.
+export const productGrid = "grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4";
+
 export function ProductCard({ product }: { product: Product }) {
   return (
     <Link to={`/producto/${product.slug}`} className="group block rounded-card">

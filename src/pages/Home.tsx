@@ -1,8 +1,66 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { LinkButton } from "../components/ui/Button";
+import { ProductCard, productGrid } from "../components/product/ProductCard";
+import { Perks } from "../components/store/Perks";
+import { Button, LinkButton } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { Skeleton, StatePanel } from "../components/ui/StatePanel";
 import { categories } from "../data/categories";
+import { fetchProducts } from "../data/products";
+import { useAsync } from "../lib/useAsync";
+
+function Featured() {
+  const { state, retry } = useAsync(() => fetchProducts(), []);
+
+  // Si todavía no hay productos, la sección no se muestra (la tienda ya tiene su propio estado vacío).
+  if (state.status === "success" && state.data.length === 0) return null;
+
+  return (
+    <section aria-labelledby="destacados" className="space-y-5">
+      <div className="flex items-end justify-between gap-4">
+        <h2 id="destacados" className="text-2xl md:text-3xl">
+          Destacados
+        </h2>
+        <Link to="/tienda" className="inline-flex min-h-11 items-center gap-1 rounded-control font-medium text-primary hover:text-accent">
+          Ver toda la tienda
+          <ArrowRight aria-hidden className="size-4" />
+        </Link>
+      </div>
+
+      {state.status === "loading" && (
+        <div className={productGrid} aria-busy>
+          <p role="status" className="sr-only">
+            Cargando productos
+          </p>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} aria-hidden className="space-y-3">
+              <Skeleton className="aspect-4/3 w-full" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-5 w-3/4" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {state.status === "error" && (
+        <StatePanel
+          variant="error"
+          title="No pudimos cargar los productos"
+          description="Revisá tu conexión e intentá de nuevo."
+          action={<Button variant="secondary" onClick={retry}>Reintentar</Button>}
+        />
+      )}
+
+      {state.status === "success" && (
+        <div className={productGrid}>
+          {state.data.slice(0, 4).map((p) => (
+            <ProductCard key={p.id} product={p} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 
 export default function Home() {
   return (
@@ -45,6 +103,15 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <section aria-labelledby="confianza" className="space-y-5">
+        <h2 id="confianza" className="sr-only">
+          Cómo comprás
+        </h2>
+        <Perks />
+      </section>
+
+      <Featured />
     </div>
   );
 }

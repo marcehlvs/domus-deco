@@ -9,4 +9,10 @@ export const store = {
     facebook: "", // nombre de la página, el que aparece en facebook.com/…
     email: "domusdecostore@gmail.com",
   },
+  // Textos de ejemplo: confirmá que reflejan tus condiciones reales.
+  perks: [
+    { icon: "shipping", title: "Envíos", text: "Coordinamos el envío al finalizar la compra." },
+    { icon: "exchange", title: "Cambios", text: "Si algo no es lo que esperabas, escribinos." },
+    { icon: "payment", title: "Pagos", text: "Pagá online con Mercado Pago." },
+  ],
 } as const;

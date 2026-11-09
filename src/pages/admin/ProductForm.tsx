@@ -18,6 +18,7 @@ interface FormState {
   brand: string;
   category: CategorySlug;
   price: string;
+  stock: string;
   description: string;
   image: string;
   imageAlt: string;
@@ -25,13 +26,14 @@ interface FormState {
   colors: { name: string; hex: string }[];
   active: boolean;
 }
-type Errors = Partial<Record<"name" | "price" | "image" | "sizes" | "colors", string>>;
+type Errors = Partial<Record<"name" | "price" | "stock" | "image" | "sizes" | "colors", string>>;
 
 const empty: FormState = {
   name: "",
   brand: "",
   category: categories[0].slug,
   price: "",
+  stock: "",
   description: "",
   image: "",
   imageAlt: "",
@@ -45,6 +47,7 @@ const fromProduct = (p: Product): FormState => ({
   brand: p.brand,
   category: p.category,
   price: String(p.price),
+  stock: p.stock === undefined ? "" : String(p.stock),
   description: p.description,
   image: p.image,
   imageAlt: p.imageAlt,
@@ -60,6 +63,7 @@ function validate(f: FormState): Errors {
   if (f.name.trim().length < 3) e.name = "Escribí el nombre del producto (mínimo 3 letras).";
   const price = Number(f.price);
   if (!f.price || !Number.isFinite(price) || price <= 0) e.price = "Ingresá un precio mayor a 0.";
+  if (f.stock !== "" && !(Number.isInteger(Number(f.stock)) && Number(f.stock) >= 0)) e.stock = "Ingresá un número entero, 0 o más.";
   if (!f.image) e.image = "Agregá una foto: subila o pegá su dirección.";
   if (parseSizes(f.sizes).length === 0) e.sizes = "Agregá al menos una medida.";
   if (!f.colors.some((c) => c.name.trim())) e.colors = "Agregá al menos un color con nombre.";
@@ -170,6 +174,7 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
           brand: form.brand.trim(),
           category: form.category,
           price: Math.round(Number(form.price)),
+          stock: form.stock === "" ? undefined : Number(form.stock),
           image: form.image,
           imageAlt: form.imageAlt.trim() || form.name.trim(),
           description: form.description.trim(),
@@ -230,17 +235,30 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
               ))}
             </Select>
           </div>
-          <Input
-            label="Precio (ARS)"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            step={1}
-            value={form.price}
-            error={errors.price}
-            hint={Number.isFinite(price) && price > 0 ? `Se muestra como ${formatPrice(price)}` : undefined}
-            onChange={(e) => set("price", e.target.value)}
-          />
+          <div className="grid gap-5 md:grid-cols-2">
+            <Input
+              label="Precio (ARS)"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              step={1}
+              value={form.price}
+              error={errors.price}
+              hint={Number.isFinite(price) && price > 0 ? `Se muestra como ${formatPrice(price)}` : undefined}
+              onChange={(e) => set("price", e.target.value)}
+            />
+            <Input
+              label="Stock (opcional)"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={form.stock}
+              error={errors.stock}
+              hint="Vacío = no controlar stock. En 0 se muestra «Sin stock»."
+              onChange={(e) => set("stock", e.target.value)}
+            />
+          </div>
           <Textarea label="Descripción" value={form.description} onChange={(e) => set("description", e.target.value)} />
           <Input
             label="Medidas"

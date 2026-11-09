@@ -11,6 +11,7 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 - [x] **Paso 3** · Catálogo con filtro por categoría y detalle de producto (loading / empty / error)
 - [x] **Paso 4** · Carrito (Zustand + localStorage), con aviso al agregar y barra fija en mobile
 - [x] **Home** · Hero, categorías, franja de envíos / cambios / pagos y productos destacados
+- [x] **Tienda** · Buscador (sin importar tildes), orden por precio / nombre, «Sin stock» y botón «Consultar por WhatsApp» en cada producto
 - [x] **Panel de administración (demo)** · `/admin`: dashboard de ingresos, carga de productos a mano y pedidos. Guarda en el navegador
 
 **Falta (en este orden):**
@@ -184,7 +185,7 @@ src/
   components/product/  ProductCard (+ productGrid, la grilla compartida)
   components/store/    Perks (envíos, cambios y pagos)
   components/admin/    AdminGuard, AdminLayout, BarChart, OrderStatusBadge, DemoOrders
-  lib/                 cn, theme (modo oscuro), format, useAsync, stats (dashboard), image (achicar fotos)
+  lib/                 cn, theme (modo oscuro), format, useAsync, stats (dashboard), image (achicar fotos), whatsapp (enlaces con mensaje)
   store/               cart (Zustand + localStorage), toast
   data/                categories, products, orders (datos locales + fetch asíncrono) y store (redes, contacto y beneficios)
   assets/products/     fotos de los productos de muestra
@@ -204,6 +205,9 @@ firebase.json          Hosting: publica dist y redirige todo a index.html
 - **Imágenes chicas**: en la tienda van en grilla de 2/3/4 columnas y en el detalle la foto tiene un máximo de 26 rem de ancho.
 - **Carrito**: se guarda solo lo que elige la persona (producto, medida, color, cantidad). Precio, nombre y foto se leen del catálogo, así nunca quedan desactualizados.
 - **Ficha de producto en mobile**: barra fija abajo con precio y «Agregar al carrito». En 768+ vuelve el botón dentro de la ficha. Solo hay uno visible a la vez.
+- **Búsqueda y orden en la dirección**: `/tienda?q=sabana&orden=menor`. Se puede compartir el enlace y el botón «atrás» no se llena de pasos. Lo agotado va al final salvo que se ordene por precio o nombre.
+- **WhatsApp en la ficha**: el botón arma el mensaje con el producto, la medida y el color elegidos, y el enlace al producto. Usa el número de `src/data/store.ts`; si está vacío, el botón no aparece.
+- **Stock por producto, no por variante**: el carrito suma todas las medidas y colores de un producto contra el mismo stock. Si más adelante hace falta stock por medida, es un cambio en el modelo y en el paso 5.
 - **Aviso al agregar**: `Toast` con `role="status"`, se cierra solo a los 5 s y respeta `prefers-reduced-motion`.
 - **Mobile first**: el diseño base es 375 px; `md:` (768) y `xl:` (1280) reordenan la composición, no solo agrandan.
 - **Accesibilidad**: enlace «Saltar al contenido», `aria-label` en botones de ícono, foco visible, objetivos táctiles de 44 px, `aria-current` en navegación, `<dialog>` nativo en el modal, errores de formulario con `role="alert"` y `prefers-reduced-motion` respetado.
@@ -217,6 +221,7 @@ Entrá a `/admin` con `npm run dev` (hay un link «Admin» en la barra).
 - **Panel**: ingresos, pedidos cobrados, ticket promedio, pendientes de pago, ingresos por día (7/30/90 días) y más vendidos. Solo cuentan como ingreso los pedidos *pagado* y *enviado*.
 - **Productos**: alta, edición, ocultar/mostrar y eliminar. La foto se sube desde el equipo (se achica en el navegador) o se pega una URL. Los productos de muestra viven en el código y no se editan desde el panel.
 - **Pedidos**: lista con filtro por estado y cambio de estado.
+- **Stock**: campo opcional por producto (vacío = no se controla). En 0 la tienda muestra «Sin stock» y no deja comprar; con 3 o menos avisa «Quedan N». El carrito nunca deja pasar el stock disponible. **El stock todavía no se descuenta al comprar**: eso se hace cuando el pago queda confirmado (pasos 6 y 8).
 - **Datos de ejemplo**: en desarrollo, el botón «Cargar pedidos de ejemplo» llena el dashboard. Se marcan como «Ejemplo» y se borran sin tocar los reales.
 
 El checkout (paso 6) llama a `createOrder` de `src/data/orders.ts`.

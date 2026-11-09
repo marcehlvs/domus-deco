@@ -19,11 +19,17 @@ export interface Product {
   description: string;
   sizes: string[];
   colors: Swatch[];
+  /** Unidades disponibles. Sin valor = no se controla el stock (siempre disponible). */
+  stock?: number;
   /** false = oculto en la tienda. Sin valor se considera activo. */
   active?: boolean;
   /** true = cargado desde el panel de administración (los de muestra viven en el código). */
   custom?: boolean;
 }
+
+export const LOW_STOCK = 3;
+export const isSoldOut = (p: Product) => p.stock !== undefined && p.stock <= 0;
+export const isLowStock = (p: Product) => p.stock !== undefined && p.stock > 0 && p.stock <= LOW_STOCK;
 
 // Productos de muestra. Los productos reales se cargan desde /admin/productos.
 const seedProducts: Product[] = [

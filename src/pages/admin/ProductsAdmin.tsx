@@ -5,7 +5,7 @@ import { Button, LinkButton } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
 import { categories } from "../../data/categories";
-import { fetchAdminProducts, removeProduct, setProductActive, type Product } from "../../data/products";
+import { fetchAdminProducts, isLowStock, isSoldOut, removeProduct, setProductActive, type Product } from "../../data/products";
 import { formatPrice } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
 import { useToast } from "../../store/toast";
@@ -92,6 +92,13 @@ export default function ProductsAdmin() {
                   <div className="flex flex-wrap gap-2">
                     {!p.custom && <Badge>De muestra</Badge>}
                     {p.active === false ? <Badge tone="warning">Oculto en la tienda</Badge> : <Badge tone="success">Visible</Badge>}
+                    {isSoldOut(p) ? (
+                      <Badge tone="danger">Sin stock</Badge>
+                    ) : isLowStock(p) ? (
+                      <Badge tone="warning">Stock bajo: {p.stock}</Badge>
+                    ) : (
+                      p.stock !== undefined && <Badge>Stock: {p.stock}</Badge>
+                    )}
                   </div>
                 </div>
                 <div className="col-span-2 flex flex-wrap gap-2 md:col-span-1 md:justify-end">

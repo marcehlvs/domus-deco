@@ -3,18 +3,19 @@ import { cn } from "../../lib/cn";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
+  hideLabel?: boolean;
   hint?: string;
   error?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, hint, error, id, className, ...props }, ref) => {
+  ({ label, hideLabel, hint, error, id, className, ...props }, ref) => {
     const auto = useId();
     const inputId = id ?? auto;
     const descId = `${inputId}-desc`;
     return (
       <div className="space-y-1.5">
-        <label htmlFor={inputId} className="block text-sm font-medium">
+        <label htmlFor={inputId} className={cn("block text-sm font-medium", hideLabel && "sr-only")}>
           {label}
         </label>
         <input

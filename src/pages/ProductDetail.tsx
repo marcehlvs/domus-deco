@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ShoppingBag } from "lucide-react";
-import { Button, LinkButton } from "../components/ui/Button";
+import { ArrowLeft, MessageCircle, ShoppingBag } from "lucide-react";
+import { Badge } from "../components/ui/Badge";
+import { Button, buttonStyles, LinkButton } from "../components/ui/Button";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
-import { fetchProduct, type Product } from "../data/products";
+import { fetchProduct, isLowStock, isSoldOut, type Product } from "../data/products";
 import { formatPrice } from "../lib/format";
 import { useAsync } from "../lib/useAsync";
+import { whatsappLink } from "../lib/whatsapp";
 import { useCart } from "../store/cart";
 import { useToast } from "../store/toast";
 
@@ -65,10 +67,15 @@ function ProductView({ product }: { product: Product }) {
   const [color, setColor] = useState(product.colors[0].name);
   const add = useCart((s) => s.add);
   const show = useToast((s) => s.show);
+  const warn = useToast((s) => s.warn);
+  const soldOut = isSoldOut(product);
   const addToCart = () => {
-    add(product, size, color);
-    show("Agregado al carrito", { to: "/carrito", label: "Ver carrito" });
+    if (add(product, size, color)) show("Agregado al carrito", { to: "/carrito", label: "Ver carrito" });
+    else warn("Ya tenés en el carrito todo el stock disponible");
   };
+  const whatsapp = whatsappLink(
+    `Hola! Quería consultar por "${product.name}" (medida ${size}, color ${color}).\n${window.location.origin}/producto/${product.slug}`,
+  );
 
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,26rem)_1fr] md:gap-10">
@@ -83,7 +90,11 @@ function ProductView({ product }: { product: Product }) {
         <div className="space-y-1">
           {product.brand && <p className="text-muted">{product.brand}</p>}
           <h1 className="text-3xl md:text-4xl">{product.name}</h1>
-          <p className="pt-2 text-2xl font-bold">{formatPrice(product.price)}</p>
+          <div className="flex flex-wrap items-center gap-3 pt-2">
+            <p className="text-2xl font-bold">{formatPrice(product.price)}</p>
+            {soldOut && <Badge>Sin stock</Badge>}
+            {isLowStock(product) && <Badge tone="warning">{product.stock === 1 ? "Última unidad" : `Quedan ${product.stock}`}</Badge>}
+          </div>
         </div>
         <p className="max-w-prose text-muted">{product.description}</p>
 
@@ -116,17 +127,31 @@ function ProductView({ product }: { product: Product }) {
           </div>
         </fieldset>
 
-        <Button size="lg" className="hidden md:inline-flex" onClick={addToCart}>
-          <ShoppingBag aria-hidden className="size-5" />
-          Agregar al carrito
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button size="lg" className="hidden md:inline-flex" disabled={soldOut} onClick={addToCart}>
+            <ShoppingBag aria-hidden className="size-5" />
+            {soldOut ? "Sin stock" : "Agregar al carrito"}
+          </Button>
+          {whatsapp && (
+            <a
+              href={whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonStyles({ variant: "secondary", size: "lg", className: "w-full md:w-auto" })}
+            >
+              <MessageCircle aria-hidden className="size-5" />
+              Consultar por WhatsApp
+              <span className="sr-only"> (se abre en una pestaña nueva)</span>
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-4 border-t border-line bg-bg/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:hidden">
         <p className="text-xl font-bold">{formatPrice(product.price)}</p>
-        <Button size="lg" className="flex-1" onClick={addToCart}>
+        <Button size="lg" className="flex-1" disabled={soldOut} onClick={addToCart}>
           <ShoppingBag aria-hidden className="size-5" />
-          Agregar al carrito
+          {soldOut ? "Sin stock" : "Agregar al carrito"}
         </Button>
       </div>
     </div>

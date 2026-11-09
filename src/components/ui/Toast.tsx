@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { CheckCircle2, X } from "lucide-react";
+import { CheckCircle2, TriangleAlert, X } from "lucide-react";
 import { useToast } from "../../store/toast";
+import { cn } from "../../lib/cn";
 
 // Un solo aviso a la vez. El contenedor con role="status" está siempre en el DOM
 // para que los lectores de pantalla anuncien el mensaje cuando aparece.
@@ -27,8 +28,8 @@ export default function Toast() {
             transition={{ duration: 0.18 }}
             className="pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-card bg-primary py-1 pl-4 pr-1 text-on-primary shadow-pop"
           >
-            <CheckCircle2 aria-hidden className="size-5 shrink-0" />
-            <span className="mr-auto whitespace-nowrap">{toast.message}</span>
+            {toast.kind === "warning" ? <TriangleAlert aria-hidden className="size-5 shrink-0" /> : <CheckCircle2 aria-hidden className="size-5 shrink-0" />}
+            <span className={cn("mr-auto", toast.action && "whitespace-nowrap")}>{toast.message}</span>
             {toast.action && (
               <Link to={toast.action.to} onClick={hide} className="inline-flex min-h-11 items-center whitespace-nowrap rounded-control px-2 font-semibold underline">
                 {toast.action.label}

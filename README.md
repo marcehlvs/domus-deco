@@ -25,7 +25,8 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 
 - Hoy `/admin` solo abre con `npm run dev`. En producción muestra «Acceso restringido» hasta el paso 5.
 - Los productos y pedidos del panel viven en el `localStorage` de cada navegador: no se comparten entre equipos ni con los clientes.
-- Redes sociales y contacto del pie: se cargan en `src/data/store.ts` (los campos vacíos no se muestran).
+- Redes sociales y contacto del pie: se cargan en `src/data/store.ts` (los campos vacíos no se muestran). Los textos de envíos / cambios / pagos del Home están aparte, en `src/data/perks.ts`: no los borres de ahí, el Home los lee.
+- **Antes de publicar**: completá y revisá los textos de `src/data/legal.ts` (ver «Textos legales»). Mientras `reviewed` sea `false`, esas páginas y sus links no aparecen en la tienda publicada.
 
 ## Cómo correrlo
 
@@ -187,7 +188,7 @@ src/
   components/admin/    AdminGuard, AdminLayout, BarChart, OrderStatusBadge, DemoOrders
   lib/                 cn, theme (modo oscuro), format, useAsync, stats (dashboard), image (achicar fotos), whatsapp (enlaces con mensaje)
   store/               cart (Zustand + localStorage), toast
-  data/                categories, products, orders (datos locales + fetch asíncrono) y store (redes, contacto y beneficios)
+  data/                categories, products, orders (datos locales + fetch asíncrono) store (nombre, redes y contacto), perks (franja del Home) y legal (textos legales)
   assets/products/     fotos de los productos de muestra
   pages/admin/         Dashboard, ProductsAdmin, ProductForm, OrdersAdmin
   pages/               Home, Shop, Cart, ProductDetail, Pending (secciones futuras), Styleguide
@@ -201,7 +202,7 @@ firebase.json          Hosting: publica dist y redirige todo a index.html
 - **Dos tipografías distintas**: Playfair Display (serif de alto contraste, como «DOMUS» del logo) para títulos y Jost (geométrica, aire deco) para texto. Se instalan con Fontsource: no dependen de Google en producción.
 - **Identidad del logo**: fondo blanco roto, tinta negra y caramelo de acento. La curva de papel del hero es la única animación de carga. El botón principal es negro y pasa a caramelo al pasar el mouse.
 - **Navbar**: simple (logo, Inicio, Tienda, cuenta, carrito con contador). En mobile se pliega en un menú. Las categorías van como filtros dentro de la tienda.
-- **Footer**: mínimo, sin repetir los links de la barra. Marca y redes sociales arriba; © y envíos / cambios / pagos abajo.
+- **Footer**: mínimo, sin repetir los links de la barra ni la franja del Home. Marca y redes sociales arriba; © y links legales abajo.
 - **Imágenes chicas**: en la tienda van en grilla de 2/3/4 columnas y en el detalle la foto tiene un máximo de 26 rem de ancho.
 - **Carrito**: se guarda solo lo que elige la persona (producto, medida, color, cantidad). Precio, nombre y foto se leen del catálogo, así nunca quedan desactualizados.
 - **Ficha de producto en mobile**: barra fija abajo con precio y «Agregar al carrito». En 768+ vuelve el botón dentro de la ficha. Solo hay uno visible a la vez.
@@ -213,6 +214,16 @@ firebase.json          Hosting: publica dist y redirige todo a index.html
 - **Accesibilidad**: enlace «Saltar al contenido», `aria-label` en botones de ícono, foco visible, objetivos táctiles de 44 px, `aria-current` en navegación, `<dialog>` nativo en el modal, errores de formulario con `role="alert"` y `prefers-reduced-motion` respetado.
 - **Estados**: `StatePanel` cubre empty / error / success / loading y `Skeleton` es el placeholder de carga. Todas las pantallas nuevas los resuelven.
 - **Datos asíncronos desde el día uno**: las funciones de `src/data/*.ts` ya devuelven promesas con la firma final. En el paso 5 se cambia su interior por Firestore sin tocar las pantallas.
+
+## Textos legales
+
+`src/data/legal.ts` trae un **borrador** de «Cambios y devoluciones» y «Términos y condiciones», con los datos que faltan marcados como `[completar]` (razón social, CUIT, domicilio, plazos y costos de envío, etc.).
+
+1. Completá todos los `[completar]`.
+2. Mostráselo a tu contador o a un abogado: los plazos y obligaciones para ventas online dependen de tu situación.
+3. Recién ahí poné `reviewed: true`. Hasta entonces, en la tienda publicada el pie no muestra los links y las páginas dicen «Próximamente». En desarrollo (`npm run dev`) se ven siempre, con un aviso de borrador.
+
+Falta el botón de arrepentimiento como formulario propio: necesita Firestore y se suma en el paso 5.
 
 ## Panel de administración
 

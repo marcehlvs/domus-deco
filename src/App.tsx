@@ -6,7 +6,9 @@ import Dashboard from "./pages/admin/Dashboard";
 import OrdersAdmin from "./pages/admin/OrdersAdmin";
 import ProductForm from "./pages/admin/ProductForm";
 import ProductsAdmin from "./pages/admin/ProductsAdmin";
+import { legal } from "./data/legal";
 import Cart from "./pages/Cart";
+import Legal from "./pages/Legal";
 import Home from "./pages/Home";
 import Pending from "./pages/Pending";
 import ProductDetail from "./pages/ProductDetail";
@@ -32,6 +34,9 @@ export default function App() {
             <Route path="pedidos" element={<OrdersAdmin />} />
           </Route>
         </Route>
+        {legal.pages.map((page) => (
+          <Route key={page.slug} path={page.slug} element={<Legal page={page} />} />
+        ))}
         <Route path="estilos" element={<Styleguide />} />
         <Route path="*" element={<Pending title="Página no encontrada" notFound />} />
       </Route>

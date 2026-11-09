@@ -1,4 +1,4 @@
-// Datos del negocio en un solo lugar. Footer y Home leen de acá.
+// Datos del negocio. El pie y los textos legales leen de acá.
 // Redes y contacto: completá lo que tengas y aparece solo en el pie. Lo vacío no se muestra.
 export const store = {
   name: "Domus Deco",
@@ -9,10 +9,4 @@ export const store = {
     facebook: "", // nombre de la página, el que aparece en facebook.com/…
     email: "domusdecostore@gmail.com",
   },
-  // Textos de ejemplo: confirmá que reflejan tus condiciones reales.
-  perks: [
-    { icon: "shipping", title: "Envíos", text: "Coordinamos el envío al finalizar la compra." },
-    { icon: "exchange", title: "Cambios", text: "Si algo no es lo que esperabas, escribinos." },
-    { icon: "payment", title: "Pagos", text: "Pagá online con Mercado Pago." },
-  ],
 } as const;

@@ -1,5 +1,6 @@
+import { Link } from "react-router-dom";
 import { Facebook, Instagram, Mail, MessageCircle } from "lucide-react";
-import { Perks } from "../store/Perks";
+import { legal, legalVisible } from "../../data/legal";
 import { store } from "../../data/store";
 
 const { instagram, facebook, whatsapp, email } = store.contact;
@@ -15,7 +16,7 @@ const socials = [
 export default function Footer() {
   return (
     <footer className="border-t border-line bg-surface">
-      <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 md:px-6 xl:px-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3 md:px-6 xl:px-8">
         <div className="flex items-center justify-between gap-4">
           <p className="text-muted">
             <span className="font-display text-lg text-ink">{store.name}</span> · {store.tagline}
@@ -42,11 +43,19 @@ export default function Footer() {
           )}
         </div>
 
-        <div className="flex flex-col gap-1 border-t border-line pt-2 text-sm text-muted md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-1 border-t border-line pt-1 text-sm text-muted md:flex-row md:items-center md:justify-between">
           <p>
             © {new Date().getFullYear()} {store.name}
           </p>
-          <Perks variant="inline" />
+          {legalVisible && (
+            <nav aria-label="Información legal" className="-mx-2 flex flex-wrap">
+              {legal.pages.map((p) => (
+                <Link key={p.slug} to={`/${p.slug}`} className="inline-flex min-h-11 items-center rounded-control px-2 hover:text-ink">
+                  {p.title}
+                </Link>
+              ))}
+            </nav>
+          )}
         </div>
       </div>
     </footer>

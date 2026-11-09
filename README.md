@@ -16,14 +16,14 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 
 **Falta (en este orden):**
 
-- [ ] **Paso 5** · Firebase Auth (registro, ingreso, rutas protegidas, rol administrador), catálogo y pedidos en Firestore, sección «Mi cuenta». Es lo que hace que el panel guarde datos de verdad
+- [ ] **Paso 5** · Firebase. **(a) hecho:** ingreso y registro con correo y Google, «Mi cuenta», rutas protegidas y administrador por colección `admins`. **(b) falta:** catálogo y pedidos en Firestore (es lo que hace que el panel guarde datos de verdad). **(c) falta:** carrito en la cuenta
 - [ ] **Paso 6** · Checkout y pedidos en Firestore (estado «pendiente de pago»)
 - [ ] **Paso 7** · Deploy en Firebase Hosting (la guía está más abajo; el `firebase.json` ya está en el repo)
 - [ ] **Paso 8** · Mercado Pago (requiere plan Blaze: Cloud Functions para la preferencia y el webhook)
 
 **Por tener en cuenta**
 
-- Hoy `/admin` solo abre con `npm run dev`. En producción muestra «Acceso restringido» hasta el paso 5.
+- `/admin` abre sin ingresar con `npm run dev`. Publicado, pide ingresar con una cuenta cuyo UID esté en la colección `admins` (ver «Quién es administrador»).
 - Los productos y pedidos del panel viven en el `localStorage` de cada navegador: no se comparten entre equipos ni con los clientes.
 - Redes sociales y contacto del pie: se cargan en `src/data/store.ts` (los campos vacíos no se muestran). Los textos de envíos / cambios / pagos del Home están aparte, en `src/data/perks.ts`: no los borres de ahí, el Home los lee.
 - **Antes de publicar**: completá y revisá los textos de `src/data/legal.ts` (ver «Textos legales»). Mientras `reviewed` sea `false`, esas páginas y sus links no aparecen en la tienda publicada.
@@ -71,7 +71,7 @@ Hasta el paso 7 alcanza con Spark. Blaze se activa recién en el paso 8, y pide 
 ### 3. Activar Authentication
 
 1. Menú **Compilación → Authentication → Comenzar**.
-2. En **Método de acceso**, activá **Correo electrónico/contraseña**.
+2. En **Método de acceso**, activá **Correo electrónico/contraseña** y **Google** (Google pide un nombre público y un correo de asistencia).
 
 ### 4. Crear Firestore
 
@@ -128,7 +128,7 @@ La idea es que administrador sea quien tenga un documento en la colección `admi
 
 ### Reglas de Firestore (propuesta para el paso 5)
 
-Esto **todavía no está aplicado**: es el borrador que vamos a revisar y cargar en el paso 5, guardado como `firestore.rules`.
+Están guardadas en `firestore.rules` y `firebase.json` ya las apunta. Se publican con `firebase deploy --only firestore:rules` (o pegándolas en Firestore → Reglas → Publicar).
 
 ```
 rules_version = '2';
@@ -154,6 +154,10 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /carts/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
@@ -186,12 +190,13 @@ src/
   components/product/  ProductCard (+ productGrid, la grilla compartida)
   components/store/    Perks (envíos, cambios y pagos)
   components/admin/    AdminGuard, AdminLayout, BarChart, OrderStatusBadge, DemoOrders
-  lib/                 cn, theme (modo oscuro), format, useAsync, stats (dashboard), image (achicar fotos), whatsapp (enlaces con mensaje)
-  store/               cart (Zustand + localStorage), toast
+  lib/                 firebase (conexión; sin .env.local la tienda funciona sin ingreso), cn, theme (modo oscuro), format, useAsync, stats (dashboard), image (achicar fotos), whatsapp (enlaces con mensaje)
+  store/               cart (Zustand + localStorage), toast, auth (sesión y rol de administrador)
   data/                categories, products, orders (datos locales + fetch asíncrono) store (nombre, redes y contacto), perks (franja del Home) y legal (textos legales)
   assets/products/     fotos de los productos de muestra
   pages/admin/         Dashboard, ProductsAdmin, ProductForm, OrdersAdmin
-  pages/               Home, Shop, Cart, ProductDetail, Pending (secciones futuras), Styleguide
+  components/auth/     RequireAuth
+  pages/               Home, Shop, Cart, Login, Account, ProductDetail, Pending (secciones futuras), Styleguide
   index.css            tokens (única fuente de verdad)
 firebase.json          Hosting: publica dist y redirige todo a index.html
 ```

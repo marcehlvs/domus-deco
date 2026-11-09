@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 import AdminGuard from "./components/admin/AdminGuard";
+import RequireAuth from "./components/auth/RequireAuth";
 import AdminLayout from "./components/admin/AdminLayout";
 import Layout from "./components/layout/Layout";
 import Dashboard from "./pages/admin/Dashboard";
@@ -7,8 +8,10 @@ import OrdersAdmin from "./pages/admin/OrdersAdmin";
 import ProductForm from "./pages/admin/ProductForm";
 import ProductsAdmin from "./pages/admin/ProductsAdmin";
 import { legal } from "./data/legal";
+import Account from "./pages/Account";
 import Cart from "./pages/Cart";
 import Legal from "./pages/Legal";
+import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Pending from "./pages/Pending";
 import ProductDetail from "./pages/ProductDetail";
@@ -23,8 +26,11 @@ export default function App() {
         <Route path="tienda" element={<Shop />} />
         <Route path="producto/:slug" element={<ProductDetail />} />
         <Route path="carrito" element={<Cart />} />
-        <Route path="checkout" element={<Pending title="Finalizar compra" />} />
-        <Route path="ingresar" element={<Pending title="Ingresar" />} />
+        <Route path="ingresar" element={<Login />} />
+        <Route element={<RequireAuth />}>
+          <Route path="cuenta" element={<Account />} />
+          <Route path="checkout" element={<Pending title="Finalizar compra" />} />
+        </Route>
         <Route path="admin" element={<AdminGuard />}>
           <Route element={<AdminLayout />}>
             <Route index element={<Dashboard />} />

@@ -3,6 +3,7 @@ import { Link, NavLink } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu, Moon, ShoppingBag, Sun, User, X } from "lucide-react";
 import { useTheme } from "../../lib/theme";
+import { useAuth } from "../../store/auth";
 import { selectCount, useCart } from "../../store/cart";
 import { cn } from "../../lib/cn";
 
@@ -24,6 +25,7 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const { theme, toggle } = useTheme();
   const cartCount = useCart(selectCount);
+  const user = useAuth((s) => s.user);
 
   // El contador "late" solo cuando se suma algo, no al cargar la página.
   const prevCount = useRef(cartCount);
@@ -62,7 +64,7 @@ export default function Header() {
         >
           {theme === "dark" ? <Sun aria-hidden className="size-5" /> : <Moon aria-hidden className="size-5" />}
         </button>
-        <Link to="/ingresar" className={iconBtn} aria-label="Mi cuenta">
+        <Link to={user ? "/cuenta" : "/ingresar"} className={iconBtn} aria-label={user ? "Mi cuenta" : "Ingresar"}>
           <User aria-hidden className="size-5" />
         </Link>
         <Link to="/carrito" className={iconBtn} aria-label={`Carrito, ${cartCount} productos`}>

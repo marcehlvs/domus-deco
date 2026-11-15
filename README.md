@@ -12,6 +12,7 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 - [x] **Paso 4** · Carrito (Zustand + localStorage), con aviso al agregar y barra fija en mobile
 - [x] **Home** · Hero, categorías, franja de envíos / cambios / pagos y productos destacados
 - [x] **Tienda** · Buscador (sin importar tildes), orden por precio / nombre, «Sin stock» y botón «Consultar por WhatsApp» en cada producto
+- [x] **Pantalla de intro** · Al abrir la portada (`/`) se ve el video de Domus Deco a pantalla completa y el botón «Ingresar a la tienda» (también entra con Escape). Aparece una vez por pestaña; los links directos (`/tienda`, `/producto/…`) entran sin intro. Código en `src/components/intro/IntroScreen.tsx` y `src/App.tsx`; el video y el póster están en `public/media/`
 - [x] **Panel de administración (demo)** · `/admin`: dashboard de ingresos, carga de productos a mano y pedidos. Guarda en el navegador
 
 **Falta (en este orden):**
@@ -25,6 +26,7 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 
 - `/admin` abre sin ingresar con `npm run dev`. Publicado, pide ingresar con una cuenta cuyo UID esté en la colección `admins` (ver «Quién es administrador»).
 - Los productos y pedidos del panel viven en el `localStorage` de cada navegador: no se comparten entre equipos ni con los clientes.
+- **Cambiar el video de la intro**: reemplazá `public/media/domus-deco-hero.mp4` (y el póster `domus-deco-poster.webp`, el primer cuadro). Si el navegador tiene «reducir movimiento», la intro muestra solo el póster. Para volver a verla: abrí la tienda en una pestaña nueva.
 - Redes sociales y contacto del pie: se cargan en `src/data/store.ts` (los campos vacíos no se muestran). Los textos de envíos / cambios / pagos del Home están aparte, en `src/data/perks.ts`: no los borres de ahí, el Home los lee.
 - **Antes de publicar**: completá y revisá los textos de `src/data/legal.ts` (ver «Textos legales»). Mientras `reviewed` sea `false`, esas páginas y sus links no aparecen en la tienda publicada.
 

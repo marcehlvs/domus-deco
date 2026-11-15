@@ -2,7 +2,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ---------- Tokens: identidad del logo (papel, tinta, caramelo) ---------- */
-:root {
+/* .force-light: fija los colores claros en una zona (la intro) aunque el sitio esté en modo oscuro */
+:root,
+.force-light {
   --bg: #f4f0ea;
   --surface: #fbf9f6;
   --alt: #ebe5db;

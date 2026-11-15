@@ -1,4 +1,8 @@
-import { Route, Routes } from "react-router-dom";
+import { useCallback, useState } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
+import { AnimatePresence } from "motion/react";
+import IntroScreen from "./components/intro/IntroScreen";
+import { hasSeenIntro, markIntroSeen } from "./lib/intro";
 import AdminGuard from "./components/admin/AdminGuard";
 import RequireAuth from "./components/auth/RequireAuth";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -19,33 +23,49 @@ import Shop from "./pages/Shop";
 import Styleguide from "./pages/Styleguide";
 
 export default function App() {
+  // La intro aparece solo al abrir la portada («/») y una vez por pestaña.
+  // Los links directos (/tienda, /producto/…, /admin) entran sin intro.
+  const { pathname } = useLocation();
+  const [seen, setSeen] = useState(hasSeenIntro);
+  const showIntro = pathname === "/" && !seen;
+  const enter = useCallback(() => {
+    markIntroSeen();
+    setSeen(true);
+  }, []);
+
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<Home />} />
-        <Route path="tienda" element={<Shop />} />
-        <Route path="producto/:slug" element={<ProductDetail />} />
-        <Route path="carrito" element={<Cart />} />
-        <Route path="ingresar" element={<Login />} />
-        <Route element={<RequireAuth />}>
-          <Route path="cuenta" element={<Account />} />
-          <Route path="checkout" element={<Pending title="Finalizar compra" />} />
-        </Route>
-        <Route path="admin" element={<AdminGuard />}>
-          <Route element={<AdminLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="productos" element={<ProductsAdmin />} />
-            <Route path="productos/nuevo" element={<ProductForm />} />
-            <Route path="productos/:id" element={<ProductForm />} />
-            <Route path="pedidos" element={<OrdersAdmin />} />
+    <>
+      {/* La tienda se carga detrás de la intro (así ya está lista al entrar), pero sin foco ni lectura de pantalla. */}
+      <div inert={showIntro}>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<Home />} />
+            <Route path="tienda" element={<Shop />} />
+            <Route path="producto/:slug" element={<ProductDetail />} />
+            <Route path="carrito" element={<Cart />} />
+            <Route path="ingresar" element={<Login />} />
+            <Route element={<RequireAuth />}>
+              <Route path="cuenta" element={<Account />} />
+              <Route path="checkout" element={<Pending title="Finalizar compra" />} />
+            </Route>
+            <Route path="admin" element={<AdminGuard />}>
+              <Route element={<AdminLayout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="productos" element={<ProductsAdmin />} />
+                <Route path="productos/nuevo" element={<ProductForm />} />
+                <Route path="productos/:id" element={<ProductForm />} />
+                <Route path="pedidos" element={<OrdersAdmin />} />
+              </Route>
+            </Route>
+            {legal.pages.map((page) => (
+              <Route key={page.slug} path={page.slug} element={<Legal page={page} />} />
+            ))}
+            <Route path="estilos" element={<Styleguide />} />
+            <Route path="*" element={<Pending title="Página no encontrada" notFound />} />
           </Route>
-        </Route>
-        {legal.pages.map((page) => (
-          <Route key={page.slug} path={page.slug} element={<Legal page={page} />} />
-        ))}
-        <Route path="estilos" element={<Styleguide />} />
-        <Route path="*" element={<Pending title="Página no encontrada" notFound />} />
-      </Route>
-    </Routes>
+        </Routes>
+      </div>
+      <AnimatePresence>{showIntro && <IntroScreen key="intro" onEnter={enter} />}</AnimatePresence>
+    </>
   );
 }

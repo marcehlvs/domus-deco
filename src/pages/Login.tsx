@@ -3,12 +3,14 @@ import { Navigate, useLocation } from "react-router-dom";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
+import { LIMITS, MIN_PASSWORD } from "../lib/validate";
+import { recordFailure, recordSuccess, secondsLocked } from "../lib/throttle";
 import { useAuth } from "../store/auth";
 
 const messages: Record<string, string> = {
   "auth/invalid-credential": "El correo o la contraseña no son correctos.",
   "auth/email-already-in-use": "Ya existe una cuenta con ese correo.",
-  "auth/weak-password": "La contraseña debe tener al menos 6 caracteres.",
+  "auth/weak-password": `La contraseña debe tener al menos ${MIN_PASSWORD} caracteres.`,
   "auth/invalid-email": "Ingresá un correo válido.",
   "auth/too-many-requests": "Demasiados intentos. Probá de nuevo en unos minutos.",
   "auth/network-request-failed": "Sin conexión. Revisá tu internet e intentá de nuevo.",
@@ -35,6 +37,7 @@ export default function Login() {
       await action();
     } catch (e) {
       const code = (e as { code?: string }).code ?? "";
+      if (code === "auth/invalid-credential") recordFailure();
       if (code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request") {
         setError(messages[code] ?? "No pudimos completar la acción. Intentá de nuevo.");
       }
@@ -48,7 +51,10 @@ export default function Login() {
     const f = new FormData(e.currentTarget);
     const email = String(f.get("email")).trim();
     const password = String(f.get("password"));
-    run(() => (mode === "login" ? signInEmail(email, password) : register(String(f.get("name")).trim(), email, password)));
+    const wait = mode === "login" ? secondsLocked() : 0;
+    if (wait > 0) return setError(`Demasiados intentos. Probá de nuevo en ${wait} segundos.`);
+    if (mode === "register" && password.length < MIN_PASSWORD) return setError(messages["auth/weak-password"]);
+    run(() => (mode === "login" ? signInEmail(email, password).then(recordSuccess) : register(String(f.get("name")).trim(), email, password)));
   };
 
   const forgot = () => {
@@ -71,16 +77,17 @@ export default function Login() {
         </Button>
         <p className="text-center text-sm text-muted">o con tu correo</p>
         <form ref={form} onSubmit={submit} className="space-y-4">
-          {!isLogin && <Input label="Nombre" name="name" autoComplete="name" required />}
-          <Input label="Correo" name="email" type="email" autoComplete="email" required />
+          {!isLogin && <Input label="Nombre" name="name" autoComplete="name" maxLength={LIMITS.person} required />}
+          <Input label="Correo" name="email" type="email" autoComplete="email" maxLength={LIMITS.email} required />
           <Input
             label="Contraseña"
             name="password"
             type="password"
             autoComplete={isLogin ? "current-password" : "new-password"}
-            minLength={6}
+            minLength={isLogin ? undefined : MIN_PASSWORD}
+            maxLength={LIMITS.password}
             required
-            hint={isLogin ? undefined : "Al menos 6 caracteres."}
+            hint={isLogin ? undefined : `Al menos ${MIN_PASSWORD} caracteres.`}
           />
           {error && (
             <p role="alert" className="text-danger">

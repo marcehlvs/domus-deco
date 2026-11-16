@@ -33,7 +33,9 @@ const saveProfile = (u: User, name?: string) =>
     doc(services().db, "users", u.uid),
     { email: u.email, name: name ?? u.displayName ?? "", updatedAt: serverTimestamp() },
     { merge: true },
-  ).catch(console.error);
+  ).catch((e) => {
+    if (import.meta.env.DEV) console.error(e); // en producción no se muestran detalles internos
+  });
 
 export const useAuth = create<AuthState>(() => ({
   user: null,

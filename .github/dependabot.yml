@@ -1,0 +1,13 @@
+# GitHub abre solo un pull request cuando una librería tiene una versión nueva o una falla de seguridad.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      firebase:
+        patterns: ["firebase", "@firebase/*"]
+      react:
+        patterns: ["react", "react-dom", "react-router-dom", "@types/react*"]

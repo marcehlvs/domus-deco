@@ -1,5 +1,6 @@
 import quiltImg from "../assets/products/cover-quilt-cacharel.jpg";
 import towelImg from "../assets/products/toallon-city-blanco.jpg";
+import { LIMITS, isHexColor, isSafeImageSrc } from "../lib/validate";
 import type { CategorySlug } from "./categories";
 
 export interface Swatch {
@@ -117,7 +118,22 @@ const slugify = (text: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+// Misma comprobación que el formulario, por si algún día se llama a saveProduct desde otro lado.
+function assertValid(p: ProductInput) {
+  const ok =
+    p.name.length >= 3 && p.name.length <= LIMITS.name &&
+    p.brand.length <= LIMITS.brand &&
+    p.description.length <= LIMITS.description &&
+    Number.isFinite(p.price) && p.price > 0 &&
+    (p.stock === undefined || (Number.isInteger(p.stock) && p.stock >= 0)) &&
+    isSafeImageSrc(p.image) &&
+    p.sizes.length > 0 && p.sizes.length <= LIMITS.sizes &&
+    p.colors.length > 0 && p.colors.length <= LIMITS.colors && p.colors.every((c) => isHexColor(c.hex));
+  if (!ok) throw new Error("invalid-product");
+}
+
 export async function saveProduct(input: ProductInput, id?: string): Promise<Product> {
+  assertValid(input);
   await delay(null);
   const custom = readCustom();
   if (id) {

@@ -10,6 +10,7 @@ import { categories, type CategorySlug } from "../../data/categories";
 import { fetchAdminProduct, saveProduct, type Product } from "../../data/products";
 import { formatPrice } from "../../lib/format";
 import { fileToDataUrl } from "../../lib/image";
+import { LIMITS, isHexColor, isSafeImageSrc } from "../../lib/validate";
 import { useAsync } from "../../lib/useAsync";
 import { useToast } from "../../store/toast";
 
@@ -61,12 +62,17 @@ const parseSizes = (text: string) => text.split(",").map((s) => s.trim()).filter
 function validate(f: FormState): Errors {
   const e: Errors = {};
   if (f.name.trim().length < 3) e.name = "Escribí el nombre del producto (mínimo 3 letras).";
+  else if (f.name.trim().length > LIMITS.name) e.name = `El nombre puede tener hasta ${LIMITS.name} letras.`;
   const price = Number(f.price);
   if (!f.price || !Number.isFinite(price) || price <= 0) e.price = "Ingresá un precio mayor a 0.";
   if (f.stock !== "" && !(Number.isInteger(Number(f.stock)) && Number(f.stock) >= 0)) e.stock = "Ingresá un número entero, 0 o más.";
   if (!f.image) e.image = "Agregá una foto: subila o pegá su dirección.";
-  if (parseSizes(f.sizes).length === 0) e.sizes = "Agregá al menos una medida.";
+  else if (!isSafeImageSrc(f.image)) e.image = "La dirección tiene que empezar con https:// (o subí la foto desde tu equipo).";
+  const sizes = parseSizes(f.sizes);
+  if (sizes.length === 0) e.sizes = "Agregá al menos una medida.";
+  else if (sizes.length > LIMITS.sizes || sizes.some((s) => s.length > LIMITS.size)) e.sizes = `Hasta ${LIMITS.sizes} medidas de ${LIMITS.size} letras como máximo.`;
   if (!f.colors.some((c) => c.name.trim())) e.colors = "Agregá al menos un color con nombre.";
+  else if (f.colors.length > LIMITS.colors || f.colors.some((c) => c.name.length > LIMITS.color || !isHexColor(c.hex))) e.colors = "Revisá los colores: nombres cortos y un tono válido.";
   return e;
 }
 
@@ -220,13 +226,13 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
             </p>
           )}
           <Input label="O pegá la dirección de la imagen" type="url" inputMode="url" placeholder="https://…" value={urlValue} error={errors.image} onChange={(e) => set("image", e.target.value.trim())} />
-          <Input label="Descripción de la foto" hint="Para personas que no la ven. Si la dejás vacía se usa el nombre." value={form.imageAlt} onChange={(e) => set("imageAlt", e.target.value)} />
+          <Input label="Descripción de la foto" maxLength={LIMITS.imageAlt} hint="Para personas que no la ven. Si la dejás vacía se usa el nombre." value={form.imageAlt} onChange={(e) => set("imageAlt", e.target.value)} />
         </fieldset>
 
         <div className="space-y-5">
-          <Input label="Nombre" value={form.name} error={errors.name} onChange={(e) => set("name", e.target.value)} autoComplete="off" />
+          <Input label="Nombre" maxLength={LIMITS.name} value={form.name} error={errors.name} onChange={(e) => set("name", e.target.value)} autoComplete="off" />
           <div className="grid gap-5 md:grid-cols-2">
-            <Input label="Marca (opcional)" value={form.brand} onChange={(e) => set("brand", e.target.value)} autoComplete="off" />
+            <Input label="Marca (opcional)" maxLength={LIMITS.brand} value={form.brand} onChange={(e) => set("brand", e.target.value)} autoComplete="off" />
             <Select label="Categoría" value={form.category} onChange={(e) => set("category", e.target.value as CategorySlug)}>
               {categories.map((c) => (
                 <option key={c.slug} value={c.slug}>
@@ -259,7 +265,7 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
               onChange={(e) => set("stock", e.target.value)}
             />
           </div>
-          <Textarea label="Descripción" value={form.description} onChange={(e) => set("description", e.target.value)} />
+          <Textarea label="Descripción" maxLength={LIMITS.description} value={form.description} onChange={(e) => set("description", e.target.value)} />
           <Input
             label="Medidas"
             hint="Separalas con comas. Ej.: 1 1/2 plaza, 2 plazas, Queen"
@@ -274,7 +280,7 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
             {form.colors.map((c, i) => (
               <div key={i} className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
-                  <Input label={`Nombre del color ${i + 1}`} value={c.name} error={i === 0 ? errors.colors : undefined} onChange={(e) => setColor(i, { name: e.target.value })} autoComplete="off" />
+                  <Input label={`Nombre del color ${i + 1}`} maxLength={LIMITS.color} value={c.name} error={i === 0 ? errors.colors : undefined} onChange={(e) => setColor(i, { name: e.target.value })} autoComplete="off" />
                 </div>
                 <div className="space-y-1.5">
                   <label htmlFor={`hex-${i}`} className="block text-sm font-medium">

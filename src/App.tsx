@@ -60,7 +60,8 @@ export default function App() {
             {legal.pages.map((page) => (
               <Route key={page.slug} path={page.slug} element={<Legal page={page} />} />
             ))}
-            <Route path="estilos" element={<Styleguide />} />
+            {/* Guía de estilos: solo en desarrollo, no se publica. */}
+            {import.meta.env.DEV && <Route path="estilos" element={<Styleguide />} />}
             <Route path="*" element={<Pending title="Página no encontrada" notFound />} />
           </Route>
         </Routes>

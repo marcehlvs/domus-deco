@@ -12,7 +12,7 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 - [x] **Paso 4** · Carrito (Zustand + localStorage), con aviso al agregar y barra fija en mobile
 - [x] **Home** · Hero, categorías, franja de envíos / cambios / pagos y productos destacados
 - [x] **Tienda** · Buscador (sin importar tildes), orden por precio / nombre, «Sin stock» y botón «Consultar por WhatsApp» en cada producto
-- [x] **Pantalla de intro** · Al abrir la portada (`/`) se ve el video de Domus Deco a pantalla completa y un botón «Ingresar» que aparece a los 2 segundos (también entra con Escape). Aparece una vez por pestaña; los links directos (`/tienda`, `/producto/…`) entran sin intro. Código en `src/components/intro/IntroScreen.tsx` y `src/App.tsx`; el video y el póster están en `public/media/`
+- [x] **Pantalla de intro** · Al abrir la portada (`/`) se ve el video de Domus Deco a pantalla completa y un botón «Ingresar» (en una fila propia, debajo) que aparece a los 2 segundos (también entra con Escape). Aparece una vez por pestaña; los links directos (`/tienda`, `/producto/…`) entran sin intro. Código en `src/components/intro/IntroScreen.tsx` y `src/App.tsx`; el video y el póster están en `public/media/`
 - [x] **Panel de administración (demo)** · `/admin`: dashboard de ingresos, carga de productos a mano y pedidos. Guarda en el navegador
 
 **Falta (en este orden):**

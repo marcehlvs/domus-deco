@@ -6,18 +6,18 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
 import { Textarea } from "../../components/ui/Textarea";
-import { categories, type CategorySlug } from "../../data/categories";
 import { fetchAdminProduct, saveProduct, type Product } from "../../data/products";
 import { formatPrice } from "../../lib/format";
 import { fileToDataUrl } from "../../lib/image";
 import { LIMITS, isHexColor, isSafeImageSrc } from "../../lib/validate";
 import { useAsync } from "../../lib/useAsync";
+import { useCategories } from "../../store/categories";
 import { useToast } from "../../store/toast";
 
 interface FormState {
   name: string;
   brand: string;
-  category: CategorySlug;
+  category: string;
   price: string;
   stock: string;
   description: string;
@@ -32,7 +32,7 @@ type Errors = Partial<Record<"name" | "price" | "stock" | "image" | "sizes" | "c
 const empty: FormState = {
   name: "",
   brand: "",
-  category: categories[0].slug,
+  category: "",
   price: "",
   stock: "",
   description: "",
@@ -122,7 +122,7 @@ export default function ProductForm() {
   return (
     <div className="space-y-4">
       {back}
-      <Editor id={id} initial={state.data ? fromProduct(state.data) : empty} />
+      <Editor id={id} initial={state.data ? fromProduct(state.data) : { ...empty, category: useCategories.getState().list[0]?.slug ?? "" }} />
     </div>
   );
 }
@@ -133,6 +133,7 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<FormState>(initial);
+  const categories = useCategories((s) => s.list);
   const [errors, setErrors] = useState<Errors>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -233,7 +234,13 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
           <Input label="Nombre" maxLength={LIMITS.name} value={form.name} error={errors.name} onChange={(e) => set("name", e.target.value)} autoComplete="off" />
           <div className="grid gap-5 md:grid-cols-2">
             <Input label="Marca (opcional)" maxLength={LIMITS.brand} value={form.brand} onChange={(e) => set("brand", e.target.value)} autoComplete="off" />
-            <Select label="Categoría" value={form.category} onChange={(e) => set("category", e.target.value as CategorySlug)}>
+            <Select
+              label="Categoría"
+              value={form.category}
+              hint="¿Falta una? Creala en la pestaña «Categorías»."
+              onChange={(e) => set("category", e.target.value)}
+            >
+              {!categories.some((c) => c.slug === form.category) && form.category && <option value={form.category}>{form.category}</option>}
               {categories.map((c) => (
                 <option key={c.slug} value={c.slug}>
                   {c.name}

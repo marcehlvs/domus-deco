@@ -9,12 +9,15 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db, googleProvider } from "../lib/firebase";
 
 interface AuthState {
   user: User | null;
   ready: boolean; // false hasta que Firebase informa si hay sesión
+  /** true si la cuenta tiene su documento en admins/{UID}. Es solo para mostrar u ocultar pantallas: lo que manda son las reglas de Firestore. */
+  isAdmin: boolean;
+  adminChecked: boolean; // false mientras se consulta si la cuenta es de administración
   signInEmail: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   signInGoogle: () => Promise<void>;
@@ -40,6 +43,8 @@ const saveProfile = (u: User, name?: string) =>
 export const useAuth = create<AuthState>(() => ({
   user: null,
   ready: false,
+  isAdmin: false,
+  adminChecked: false,
   signInEmail: async (email, password) => {
     await signInWithEmailAndPassword(services().auth, email, password);
   },
@@ -61,7 +66,18 @@ export const useAuth = create<AuthState>(() => ({
 }));
 
 if (auth) {
-  onAuthStateChanged(auth, (user) => useAuth.setState({ user, ready: true }));
+  onAuthStateChanged(auth, async (user) => {
+    useAuth.setState({ user, ready: true, isAdmin: false, adminChecked: !user });
+    if (!user || !db) return;
+    // La persona puede leer solo su propio documento de «admins» (reglas de Firestore): si existe, es administradora.
+    let isAdmin = false;
+    try {
+      isAdmin = (await getDoc(doc(db, "admins", user.uid))).exists();
+    } catch (e) {
+      if (import.meta.env.DEV) console.error(e);
+    }
+    if (useAuth.getState().user?.uid === user.uid) useAuth.setState({ isAdmin, adminChecked: true });
+  });
 } else {
-  useAuth.setState({ ready: true });
+  useAuth.setState({ ready: true, adminChecked: true });
 }

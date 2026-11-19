@@ -2,6 +2,8 @@
 export const LIMITS = {
   name: 100,
   brand: 60,
+  category: 40,
+  categoryText: 60,
   description: 2000,
   imageAlt: 200,
   size: 40,

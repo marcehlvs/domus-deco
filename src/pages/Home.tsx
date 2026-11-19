@@ -5,9 +5,9 @@ import { Perks } from "../components/store/Perks";
 import { Button, LinkButton } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
-import { categories } from "../data/categories";
 import { fetchProducts } from "../data/products";
 import { useAsync } from "../lib/useAsync";
+import { useCategories } from "../store/categories";
 
 function Featured() {
   const { state, retry } = useAsync(() => fetchProducts(), []);
@@ -63,6 +63,7 @@ function Featured() {
 }
 
 export default function Home() {
+  const categories = useCategories((s) => s.list);
   return (
     <div className="space-y-12 md:space-y-16">
       <section className="relative overflow-hidden rounded-card border border-line bg-surface">

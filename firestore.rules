@@ -51,6 +51,22 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ---------- Categorías: las ve cualquiera, solo administración las cambia ----------
+    // El ID del documento es el «slug» (ej.: vasos-y-copas). «order» fija el lugar en la lista.
+    // Que una categoría con productos no se borre lo cuida el panel; estas reglas no pueden contar productos.
+    function validCategory(c) {
+      return c.keys().hasOnly(['name', 'text', 'order'])
+        && c.keys().hasAll(['name'])
+        && text(c.name, 40)
+        && textOrEmpty(c.get('text', ''), 60)
+        && c.get('order', 0) is int && c.get('order', 0) >= 0 && c.get('order', 0) < 1000;
+    }
+    match /categories/{slug} {
+      allow read: if true;
+      allow create, update: if isAdmin() && validCategory(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
     // ---------- Pedidos: cada persona ve solo los suyos ----------
     function validOrder(o) {
       return o.keys().hasOnly(['userId', 'number', 'status', 'items', 'total', 'customer', 'createdAt'])

@@ -108,9 +108,10 @@ La lista pensaba en apps con servidor propio, base SQL y cookies. Domus Deco es 
 
 ## 8. Que nadie se ponga admin
 
-- **Encontré:** el panel `/admin` solo abre con `npm run dev`; publicado muestra «Acceso restringido» (lo comprobé con una compilación de producción). La idea de administrador es «tener un documento en `admins/{UID}`».
+- **Encontré:** el panel `/admin` solo abría con `npm run dev`; publicado mostraba «Acceso restringido» para todos. La idea de administrador es «tener un documento en `admins/{UID}`».
 - **Hice:** las reglas de Firestore (punto 10) hacen que `admins` **no se pueda escribir desde el sitio** (`allow write: if false`) y que el perfil `users/{uid}` acepte solo `email`, `name` y `updatedAt`, así nadie puede agregarse un campo «rol».
-- **Te toca:** crear tu documento `admins/<tu UID>` **a mano** en la consola (README, paso 8). Cuando el panel salga de «solo desarrollo» (paso 5b), la pantalla tiene que consultar ese documento, y lo que realmente manda son las reglas.
+- **Hice (paso 5b):** el panel ahora pide ingresar y consulta tu documento `admins/<UID>`: sin sesión te lleva a «Ingresar»; con una cuenta común dice «Tu cuenta no es de administración» y el link «Admin» del menú no aparece. Eso es solo comodidad de pantalla: lo que realmente manda son las reglas de Firestore, que rechazan cualquier escritura de quien no sea admin aunque alguien abra la pantalla a la fuerza.
+- **Te toca:** crear tu documento `admins/<tu UID>` **a mano** en la consola (README, paso 8) si todavía no lo hiciste. Sin él, no vas a poder entrar al panel.
 
 ## 9. Encriptar datos sensibles
 
@@ -126,13 +127,14 @@ La lista pensaba en apps con servidor propio, base SQL y cookies. Domus Deco es 
   | Colección | Leer | Escribir |
   | --- | --- | --- |
   | `products` | cualquiera | solo admins, con datos válidos (precio entero > 0, nombre, imagen, largos) |
+  | `categories` | cualquiera | solo admins, con nombre (hasta 40 letras), frase (hasta 60) y orden |
   | `orders` | admins, o la persona dueña del pedido | crear: solo con sesión, `userId` propio, estado `pendiente` y datos válidos. Cambiar o borrar: solo admins |
   | `users/{uid}` | solo esa persona | solo esa persona, solo `email`, `name`, `updatedAt` |
   | `carts/{uid}` | solo esa persona | solo esa persona, hasta 100 ítems |
   | `admins/{uid}` | solo uno mismo | **nadie** (se crean a mano) |
   | cualquier otra | nadie | nadie |
 
-- **Límites conocidos:** los productos ocultos (`active: false`) los filtra la app, no las reglas (el catálogo no tiene datos privados). Y el total de un pedido lo manda el navegador; por eso, en el paso 8, la Cloud Function lo recalcula con los precios de Firestore antes de cobrar.
+- **Límites conocidos:** las reglas no pueden contar productos, así que «no borrar una categoría con productos» lo cuida el panel, no la base de datos. Los productos ocultos (`active: false`) los filtra la app, no las reglas (el catálogo no tiene datos privados). Y el total de un pedido lo manda el navegador; por eso, en el paso 8, la Cloud Function lo recalcula con los precios de Firestore antes de cobrar.
 - **Te toca: probarlas antes de publicar.** En Firebase → Firestore → **Reglas** → **Simulador de reglas**, probá estos casos (los de admin necesitan que ya exista tu documento `admins/<tu UID>`):
 
   | Caso | Debe dar |
@@ -141,6 +143,10 @@ La lista pensaba en apps con servidor propio, base SQL y cookies. Domus Deco es 
   | Crear `products/x` sin sesión | **denegado** |
   | Crear `products/x` con sesión de una clienta común | **denegado** |
   | Crear `products/x` como admin con precio `-5` | **denegado** |
+  | Leer `categories/x` sin sesión | permitido |
+  | Crear `categories/x` con sesión de una clienta común | **denegado** |
+  | Crear `categories/x` como admin con `{name: "Vasos", text: "", order: 4}` | permitido |
+  | Crear `categories/x` como admin con un campo extra `color` | **denegado** |
   | Leer `admins/<otro UID>` | **denegado** |
   | Escribir `admins/<mi UID>` | **denegado** |
   | Leer un pedido ajeno | **denegado** |

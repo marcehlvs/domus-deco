@@ -2,16 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu, Moon, ShoppingBag, Sun, User, X } from "lucide-react";
+import { db } from "../../lib/firebase";
 import { useTheme } from "../../lib/theme";
 import { useAuth } from "../../store/auth";
 import { selectCount, useCart } from "../../store/cart";
 import { cn } from "../../lib/cn";
 
-const links = [
+const baseLinks = [
   { to: "/", label: "Inicio" },
   { to: "/tienda", label: "Tienda" },
-  // Visible solo en desarrollo hasta que exista el ingreso de administradores (paso 5).
-  ...(import.meta.env.DEV ? [{ to: "/admin", label: "Admin" }] : []),
 ];
 
 const iconBtn = "relative inline-flex size-11 items-center justify-center rounded-control text-ink hover:bg-alt";
@@ -26,6 +25,9 @@ export default function Header() {
   const { theme, toggle } = useTheme();
   const cartCount = useCart(selectCount);
   const user = useAuth((s) => s.user);
+  const isAdmin = useAuth((s) => s.isAdmin);
+  // «Admin» aparece solo para cuentas de administración (y en desarrollo sin Firebase).
+  const links = isAdmin || (import.meta.env.DEV && !db) ? [...baseLinks, { to: "/admin", label: "Admin" }] : baseLinks;
 
   // El contador "late" solo cuando se suma algo, no al cargar la página.
   const prevCount = useRef(cartCount);

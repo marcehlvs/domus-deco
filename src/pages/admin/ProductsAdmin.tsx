@@ -1,17 +1,16 @@
 import { useState } from "react";
 import { Download, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
+import { LegacyImport } from "../../components/admin/LegacyImport";
 import { Badge } from "../../components/ui/Badge";
 import { Button, LinkButton } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
-import { categories } from "../../data/categories";
 import { fetchAdminProducts, isLowStock, isSoldOut, removeProduct, setProductActive, type Product } from "../../data/products";
 import { downloadStockSheet } from "../../lib/downloadStockSheet";
 import { formatPrice } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
+import { categoryName } from "../../store/categories";
 import { useToast } from "../../store/toast";
-
-const categoryName = (slug: string) => categories.find((c) => c.slug === slug)?.name ?? slug;
 
 export default function ProductsAdmin() {
   const { state, retry } = useAsync(() => fetchAdminProducts(), []);
@@ -79,6 +78,8 @@ export default function ProductsAdmin() {
           No pudimos generar la planilla. Intentá de nuevo.
         </p>
       )}
+
+      <LegacyImport onDone={retry} />
 
       {failed && (
         <p role="alert" className="text-danger">

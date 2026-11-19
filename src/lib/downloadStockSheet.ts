@@ -1,10 +1,9 @@
 import logoUrl from "../assets/logo-planilla.png";
-import { categories } from "../data/categories";
 import { LOW_STOCK, type Product } from "../data/products";
 import { store } from "../data/store";
+import { categoryName } from "../store/categories";
 import { buildStockWorkbook, type StockRow } from "./stockSheet";
 
-const categoryName = (slug: string) => categories.find((c) => c.slug === slug)?.name ?? slug;
 const collator = new Intl.Collator("es");
 
 const toRow = (p: Product): StockRow => ({

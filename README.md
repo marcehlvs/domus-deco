@@ -13,19 +13,19 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 - [x] **Home** · Hero, categorías, franja de envíos / cambios / pagos y productos destacados
 - [x] **Tienda** · Buscador (sin importar tildes), orden por precio / nombre, «Sin stock» y botón «Consultar por WhatsApp» en cada producto
 - [x] **Pantalla de intro** · Al abrir la portada (`/`) se ve el video de Domus Deco a pantalla completa y un botón «Ingresar» (en una fila propia, debajo) que aparece a los 2 segundos (también entra con Escape). Aparece una vez por pestaña; los links directos (`/tienda`, `/producto/…`) entran sin intro. Código en `src/components/intro/IntroScreen.tsx` y `src/App.tsx`; el video y el póster están en `public/media/`
-- [x] **Panel de administración (demo)** · `/admin`: dashboard de ingresos, carga de productos a mano y pedidos. Guarda en el navegador
+- [x] **Panel de administración** · `/admin`: dashboard de ingresos, carga de productos, **categorías** (pestaña «Categorías»: agregar, renombrar y eliminar; no se puede eliminar una con productos; código en `src/store/categories.ts`) y pedidos. Con Firebase configurado, productos y categorías se guardan en Firestore; sin Firebase (primer día en tu computadora), en el navegador (modo demostración)
 
 **Falta (en este orden):**
 
-- [ ] **Paso 5** · Firebase. **(a) hecho:** ingreso y registro con correo y Google, «Mi cuenta», rutas protegidas y administrador por colección `admins`. **(b) falta:** catálogo y pedidos en Firestore (es lo que hace que el panel guarde datos de verdad). **(c) falta:** carrito en la cuenta
+- [ ] **Paso 5** · Firebase. **(a) hecho:** ingreso y registro con correo y Google, «Mi cuenta», rutas protegidas y administrador por colección `admins`. **(b) hecho:** productos y categorías en Firestore (colecciones `products` y `categories`; el panel pide una cuenta de la colección `admins`; si ya cargaste cosas en el navegador, el panel te ofrece subirlas). **(b) falta:** pedidos en Firestore (van con el paso 6). **(c) falta:** carrito en la cuenta
 - [ ] **Paso 6** · Checkout y pedidos en Firestore (estado «pendiente de pago»)
 - [ ] **Paso 7** · Deploy en Firebase Hosting (la guía está más abajo; el `firebase.json` ya está en el repo)
 - [ ] **Paso 8** · Mercado Pago (requiere plan Blaze: Cloud Functions para la preferencia y el webhook)
 
 **Por tener en cuenta**
 
-- `/admin` abre sin ingresar con `npm run dev`. Publicado, pide ingresar con una cuenta cuyo UID esté en la colección `admins` (ver «Quién es administrador»).
-- Los productos y pedidos del panel viven en el `localStorage` de cada navegador: no se comparten entre equipos ni con los clientes.
+- `/admin` pide ingresar con una cuenta cuyo UID esté en la colección `admins` (ver «Quién es administrador»). Solo si no hay Firebase configurado (sin `.env.local`) abre sin ingresar, y únicamente con `npm run dev`.
+- Mientras no cargues ningún producto, la tienda muestra 2 productos de muestra (los del código) para no quedar vacía; al cargar el primero propio, desaparecen. Los **pedidos** del panel todavía son de demostración (`localStorage`), hasta el paso 6.
 - **Cambiar el video de la intro**: reemplazá `public/media/domus-deco-hero.mp4` (y el póster `domus-deco-poster.webp`, el primer cuadro). Si el navegador tiene «reducir movimiento», la intro muestra solo el póster. Para volver a verla: abrí la tienda en una pestaña nueva.
 - Redes sociales y contacto del pie: se cargan en `src/data/store.ts` (los campos vacíos no se muestran). Los textos de envíos / cambios / pagos del Home están aparte, en `src/data/perks.ts`: no los borres de ahí, el Home los lee.
 - **Antes de publicar**: completá y revisá los textos de `src/data/legal.ts` (ver «Textos legales»). Mientras `reviewed` sea `false`, esas páginas y sus links no aparecen en la tienda publicada.

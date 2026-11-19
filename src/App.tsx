@@ -1,12 +1,14 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import IntroScreen from "./components/intro/IntroScreen";
 import { hasSeenIntro, markIntroSeen } from "./lib/intro";
+import { useCategories } from "./store/categories";
 import AdminGuard from "./components/admin/AdminGuard";
 import RequireAuth from "./components/auth/RequireAuth";
 import AdminLayout from "./components/admin/AdminLayout";
 import Layout from "./components/layout/Layout";
+import CategoriesAdmin from "./pages/admin/CategoriesAdmin";
 import Dashboard from "./pages/admin/Dashboard";
 import OrdersAdmin from "./pages/admin/OrdersAdmin";
 import ProductForm from "./pages/admin/ProductForm";
@@ -27,6 +29,10 @@ export default function App() {
   // Los links directos (/tienda, /producto/…, /admin) entran sin intro.
   const { pathname } = useLocation();
   const [seen, setSeen] = useState(hasSeenIntro);
+  // Las categorías se traen una vez al abrir la tienda.
+  useEffect(() => {
+    void useCategories.getState().load();
+  }, []);
   const showIntro = pathname === "/" && !seen;
   const enter = useCallback(() => {
     markIntroSeen();
@@ -54,6 +60,7 @@ export default function App() {
                 <Route path="productos" element={<ProductsAdmin />} />
                 <Route path="productos/nuevo" element={<ProductForm />} />
                 <Route path="productos/:id" element={<ProductForm />} />
+                <Route path="categorias" element={<CategoriesAdmin />} />
                 <Route path="pedidos" element={<OrdersAdmin />} />
               </Route>
             </Route>

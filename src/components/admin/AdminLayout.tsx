@@ -1,10 +1,12 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { ClipboardList, Info, LayoutDashboard, Package } from "lucide-react";
+import { ClipboardList, Info, LayoutDashboard, Package, Tags } from "lucide-react";
+import { db } from "../../lib/firebase";
 import { buttonStyles } from "../ui/Button";
 
 const tabs = [
   { to: "/admin", label: "Panel", Icon: LayoutDashboard, end: true },
   { to: "/admin/productos", label: "Productos", Icon: Package, end: false },
+  { to: "/admin/categorias", label: "Categorías", Icon: Tags, end: false },
   { to: "/admin/pedidos", label: "Pedidos", Icon: ClipboardList, end: false },
 ];
 
@@ -28,10 +30,12 @@ export default function AdminLayout() {
         </nav>
       </div>
 
-      <div role="note" className="flex items-start gap-3 rounded-card border border-line bg-alt p-4 text-sm">
-        <Info aria-hidden className="mt-0.5 size-5 shrink-0" />
-        <p>Modo demostración: productos y pedidos se guardan solo en este navegador. Con Firebase (paso 5) pasan a la base de datos real.</p>
-      </div>
+      {!db && (
+        <div role="note" className="flex items-start gap-3 rounded-card border border-line bg-alt p-4 text-sm">
+          <Info aria-hidden className="mt-0.5 size-5 shrink-0" />
+          <p>Modo demostración: productos, categorías y pedidos se guardan solo en este navegador. Con Firebase configurado (.env.local) pasan a la base de datos real.</p>
+        </div>
+      )}
 
       <Outlet />
     </div>

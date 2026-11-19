@@ -5,9 +5,9 @@ import { Button, LinkButton } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
-import { categories } from "../data/categories";
 import { fetchProducts, isSoldOut, type Product } from "../data/products";
 import { useAsync } from "../lib/useAsync";
+import { useCategories } from "../store/categories";
 
 const sorts = {
   relevancia: "Más relevantes",
@@ -39,6 +39,7 @@ function arrange(list: Product[], q: string, sort: SortKey) {
 
 export default function Shop() {
   const [params, setParams] = useSearchParams();
+  const categories = useCategories((s) => s.list);
   const current = categories.find((c) => c.slug === params.get("categoria"));
   const q = params.get("q") ?? "";
   const sortParam = params.get("orden");

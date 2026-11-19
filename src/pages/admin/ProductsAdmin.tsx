@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
+import { Download, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
 import { Badge } from "../../components/ui/Badge";
 import { Button, LinkButton } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
 import { categories } from "../../data/categories";
 import { fetchAdminProducts, isLowStock, isSoldOut, removeProduct, setProductActive, type Product } from "../../data/products";
+import { downloadStockSheet } from "../../lib/downloadStockSheet";
 import { formatPrice } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
 import { useToast } from "../../store/toast";
@@ -18,6 +19,23 @@ export default function ProductsAdmin() {
   const [toDelete, setToDelete] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportFailed, setExportFailed] = useState(false);
+
+  const customProducts = state.status === "success" ? state.data.filter((p) => p.custom) : [];
+
+  const exportStock = async () => {
+    setExporting(true);
+    setExportFailed(false);
+    try {
+      await downloadStockSheet(customProducts);
+      show("Planilla descargada");
+    } catch {
+      setExportFailed(true);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const run = async (job: () => Promise<void>, message: string) => {
     setBusy(true);
@@ -36,13 +54,31 @@ export default function ProductsAdmin() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-2xl">Productos</h2>
-        <LinkButton to="/admin/productos/nuevo">
-          <Plus aria-hidden className="size-4" />
-          Nuevo producto
-        </LinkButton>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            variant="secondary"
+            loading={exporting}
+            disabled={customProducts.length === 0}
+            title={customProducts.length === 0 ? "Cargá al menos un producto para descargar la planilla" : undefined}
+            onClick={exportStock}
+          >
+            {!exporting && <Download aria-hidden className="size-4" />}
+            Descargar planilla de stock
+          </Button>
+          <LinkButton to="/admin/productos/nuevo">
+            <Plus aria-hidden className="size-4" />
+            Nuevo producto
+          </LinkButton>
+        </div>
       </div>
+
+      {exportFailed && (
+        <p role="alert" className="text-danger">
+          No pudimos generar la planilla. Intentá de nuevo.
+        </p>
+      )}
 
       {failed && (
         <p role="alert" className="text-danger">

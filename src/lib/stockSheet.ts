@@ -20,11 +20,11 @@ type Excel = typeof ExcelJS;
 const C = {
   ink: "FF161412",
   accent: "FFD3955A",
-  cream: "FFF1EBE2",
-  muted: "FFA99F92",
+  cream: "FFF1EBE2", // mismo fondo crema del logo
   band: "FFFAF7F2",
   line: "FFE4DCCF",
   text: "FF2B2622",
+  label: "FF7A6E60",
 };
 const FONT = "Arial";
 const HEADER_ROW = 9;
@@ -78,29 +78,30 @@ export function buildStockWorkbook(
     { width: 32 }, // I colores
   ];
 
-  // ── Banner con logo ─────────────────────────────────────────────
+  // ── Banner con el logo del sitio (fondo crema, como la portada) ──
   for (let r = 1; r <= 3; r++) {
-    ws.getRow(r).height = 30;
-    for (let c = 1; c <= LAST_COL; c++) ws.getCell(r, c).fill = fill(C.ink);
+    ws.getRow(r).height = 38;
+    for (let c = 1; c <= LAST_COL; c++) ws.getCell(r, c).fill = fill(c >= 8 ? C.accent : C.cream);
   }
   ws.getRow(4).height = 4;
-  for (let c = 1; c <= LAST_COL; c++) ws.getCell(4, c).fill = fill(C.accent);
+  for (let c = 1; c <= LAST_COL; c++) ws.getCell(4, c).fill = fill(C.ink);
 
   if (opts.logo) {
+    // PNG con fondo transparente (755 x 454): se ve igual sobre cualquier color.
     const id = wb.addImage({ buffer: opts.logo as ExcelJS.Buffer, extension: "png" });
-    ws.addImage(id, { tl: { col: 0.1, row: 0.12 }, ext: { width: 300, height: 84 } });
+    ws.addImage(id, { tl: { col: 0.15, row: 0.08 }, ext: { width: 229, height: 140 } });
   }
 
-  ws.mergeCells("F1:I1");
-  Object.assign(ws.getCell("F1"), {
+  ws.mergeCells("H2:I2");
+  Object.assign(ws.getCell("H2"), {
     value: "PLANILLA DE STOCK",
-    font: { name: FONT, size: 16, bold: true, color: { argb: C.cream } },
+    font: { name: FONT, size: 16, bold: true, color: { argb: C.ink } },
     alignment: { horizontal: "right", vertical: "bottom", indent: 1 },
   });
-  ws.mergeCells("F2:I2");
-  Object.assign(ws.getCell("F2"), {
+  ws.mergeCells("H3:I3");
+  Object.assign(ws.getCell("H3"), {
     value: `Generada el ${new Intl.DateTimeFormat("es-AR", { dateStyle: "long" }).format(opts.date)}`,
-    font: { name: FONT, size: 10, color: { argb: C.muted } },
+    font: { name: FONT, size: 10, color: { argb: C.ink } },
     alignment: { horizontal: "right", vertical: "top", indent: 1 },
   });
 
@@ -116,8 +117,8 @@ export function buildStockWorkbook(
     { cells: ["D", "E"], label: "STOCK BAJO", formula: `COUNTIF(${range("F")},"Stock bajo")`, result: estados.filter((e) => e === "Stock bajo").length, fmt: "0" },
     { cells: ["F"], label: "SIN STOCK", formula: `COUNTIF(${range("F")},"Sin stock")`, result: estados.filter((e) => e === "Sin stock").length, fmt: "0" },
     {
-      cells: ["G", "H"],
-      label: "VALOR DEL STOCK (A PRECIO DE VENTA)",
+      cells: ["G", "I"],
+      label: "VALOR DEL STOCK (PRECIO DE VENTA)",
       formula: `SUMPRODUCT(${range("D")},${range("E")})`,
       result: rows.reduce((n, r) => n + r.price * (r.stock ?? 0), 0),
       fmt: '"$"#,##0',
@@ -133,7 +134,7 @@ export function buildStockWorkbook(
     }
     Object.assign(ws.getCell(`${a}6`), {
       value: k.label,
-      font: { name: FONT, size: 8, bold: true, color: { argb: "FF8A7E70" } },
+      font: { name: FONT, size: 8, bold: true, color: { argb: C.label } },
       alignment: { vertical: "bottom", horizontal: "left", indent: 1 },
     });
     Object.assign(ws.getCell(`${a}7`), {
@@ -142,20 +143,20 @@ export function buildStockWorkbook(
       font: { name: FONT, size: 16, bold: true, color: { argb: C.ink } },
       alignment: { vertical: "middle", horizontal: "left", indent: 1 },
     });
-    for (const col of k.cells) {
-      if (!col) continue;
+    const from = a.charCodeAt(0);
+    const to = (b ?? a).charCodeAt(0);
+    for (let code = from; code <= to; code++) {
       for (const r of [6, 7]) {
-        ws.getCell(`${col}${r}`).fill = fill(C.band);
-        ws.getCell(`${col}${r}`).border = {
-          top: r === 6 ? { style: "medium", color: { argb: C.accent } } : undefined,
-        };
+        const cell = ws.getCell(`${String.fromCharCode(code)}${r}`);
+        cell.fill = fill(C.band);
+        cell.border = { top: r === 6 ? { style: "medium", color: { argb: C.accent } } : undefined };
       }
     }
   }
   ws.getRow(8).height = 10;
 
   // ── Encabezado de la tabla ───────────────────────────────────────
-  const headers = ["Producto", "Marca", "Categoría", "Precio", "Unidades", "Estado", "Visible en la tienda", "Talles", "Colores"];
+  const headers = ["Producto", "Marca", "Categoría", "Precio", "Unidades", "Estado", "En la tienda", "Talles", "Colores"];
   const hr = ws.getRow(HEADER_ROW);
   hr.height = 28;
   headers.forEach((h, i) => {
@@ -219,6 +220,10 @@ export function buildStockWorkbook(
       { type: "expression", priority: 4, formulae: [`$F${FIRST_ROW}="Sin control de stock"`], style: estadoStyle("FFECE8E1", "FF6B6256") },
     ],
   });
+
+  const note = ws.getCell(`A${last + 2}`);
+  note.value = "Podés editar Precio y Unidades: Estado y el resumen de arriba se recalculan solos. Los cambios quedan solo en esta planilla; para actualizar la tienda, cargalos en el panel.";
+  note.font = { name: FONT, size: 9, italic: true, color: { argb: C.label } };
 
   ws.autoFilter = { from: { row: HEADER_ROW, column: 1 }, to: { row: last, column: LAST_COL } };
 

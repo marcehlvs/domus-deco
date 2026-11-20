@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Check, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "../ui/Button";
+import { ColorDot } from "../ui/ColorDot";
 import { Input } from "../ui/Input";
 import type { Swatch } from "../../data/products";
 import { PALETTE } from "../../data/swatches";
@@ -13,20 +14,7 @@ interface Props {
   error?: string;
 }
 
-// Tilde oscuro sobre tonos claros y blanco sobre tonos oscuros, para que siempre se vea.
-const isLight = (hex: string) => {
-  const n = parseInt(hex.slice(1), 16);
-  return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) > 150;
-};
 const same = (a: Swatch, b: Swatch) => a.name === b.name && a.hex.toLowerCase() === b.hex.toLowerCase();
-
-function Dot({ hex, checked }: { hex: string; checked?: boolean }) {
-  return (
-    <span aria-hidden className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-ink/25" style={{ backgroundColor: hex }}>
-      {checked && <Check className={cn("size-3.5", isLight(hex) ? "text-ink" : "text-white")} />}
-    </span>
-  );
-}
 
 // Elegir colores sin saber el hex: se toca un color de la paleta (otra vez para quitarlo).
 // «Otro color» queda para los casos raros: nombre propio y tono con selector o código.
@@ -72,7 +60,7 @@ export function ColorPalette({ value, onChange, error }: Props) {
                 on ? "border-primary bg-alt font-semibold" : "border-line bg-surface hover:bg-alt",
               )}
             >
-              <Dot hex={s.hex} checked={on} />
+              <ColorDot hex={s.hex} checked={on} />
               {s.name}
             </button>
           );
@@ -85,7 +73,7 @@ export function ColorPalette({ value, onChange, error }: Props) {
           <ul className="flex flex-wrap gap-2">
             {value.map((c) => (
               <li key={`${c.name}-${c.hex}`} className="inline-flex min-h-11 items-center gap-2 rounded-control border border-line bg-surface pl-3 text-sm">
-                <Dot hex={c.hex} />
+                <ColorDot hex={c.hex} />
                 {c.name}
                 <button type="button" aria-label={`Quitar ${c.name}`} onClick={() => onChange(value.filter((x) => !same(x, c)))} className="inline-flex size-11 items-center justify-center rounded-control text-muted hover:bg-alt hover:text-ink">
                   <X aria-hidden className="size-4" />

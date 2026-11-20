@@ -12,6 +12,7 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 - [x] **Paso 4** · Carrito (Zustand + localStorage), con aviso al agregar y barra fija en mobile
 - [x] **Home** · Hero, categorías, franja de envíos / cambios / pagos y productos destacados
 - [x] **Tienda** · Buscador (sin importar tildes), orden por precio / nombre, «Sin stock» y botón «Consultar por WhatsApp» en cada producto
+- [x] **Filtros** · Botón «Filtros» en la tienda: rango de precio, color, medida y «solo con stock», más las categorías de arriba. Viven en la dirección (`?min=…&max=…&color=…&medida=…&stock=1`), se muestran como chips que se quitan de a uno y se pueden compartir. Código en `src/lib/filters.ts` y `src/components/store/FiltersModal.tsx`
 - [x] **Pantalla de intro** · Al abrir la portada (`/`) se ve el video de Domus Deco a pantalla completa y un botón «Ingresar» (en una fila propia, debajo) que aparece a los 2 segundos (también entra con Escape). Aparece una vez por pestaña; los links directos (`/tienda`, `/producto/…`) entran sin intro. Código en `src/components/intro/IntroScreen.tsx` y `src/App.tsx`; el video y el póster están en `public/media/`
 - [x] **Panel de administración** · `/admin`: dashboard de ingresos, carga de productos, **categorías** (pestaña «Categorías»: agregar, renombrar y eliminar; no se puede eliminar una con productos; código en `src/store/categories.ts`) y pedidos. Con Firebase configurado, productos y categorías se guardan en Firestore; sin Firebase (primer día en tu computadora), en el navegador (modo demostración)
 

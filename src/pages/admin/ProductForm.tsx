@@ -7,7 +7,8 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
 import { Textarea } from "../../components/ui/Textarea";
-import { fetchAdminProduct, saveProduct, type Product } from "../../data/products";
+import { fetchAdminProduct, saveProduct, totalStock, variantKey, type Product } from "../../data/products";
+import { ColorDot } from "../../components/ui/ColorDot";
 import { formatPrice } from "../../lib/format";
 import { fileToDataUrl } from "../../lib/image";
 import { LIMITS, isHexColor, isSafeImageSrc } from "../../lib/validate";
@@ -20,7 +21,12 @@ interface FormState {
   brand: string;
   category: string;
   price: string;
-  stock: string;
+  /** true = se controla el stock por medida y color; false = sin control (siempre disponible). */
+  trackStock: boolean;
+  /** Unidades por combinación, como texto de los campos. La clave es variantKey(medida, color). Vacío = 0. */
+  stockBy: Record<string, string>;
+  /** Solo si el producto viene del formato anterior (un único stock): se muestra para repartirlo. */
+  legacyStock?: number;
   description: string;
   image: string;
   imageAlt: string;
@@ -35,7 +41,8 @@ const empty: FormState = {
   brand: "",
   category: "",
   price: "",
-  stock: "",
+  trackStock: true,
+  stockBy: {},
   description: "",
   image: "",
   imageAlt: "",
@@ -49,7 +56,9 @@ const fromProduct = (p: Product): FormState => ({
   brand: p.brand,
   category: p.category,
   price: String(p.price),
-  stock: p.stock === undefined ? "" : String(p.stock),
+  trackStock: p.stockBy !== undefined || p.stock !== undefined,
+  stockBy: Object.fromEntries(Object.entries(p.stockBy ?? {}).map(([k, n]) => [k, String(n)])),
+  legacyStock: p.stockBy === undefined ? p.stock : undefined,
   description: p.description,
   image: p.image,
   imageAlt: p.imageAlt,
@@ -58,7 +67,16 @@ const fromProduct = (p: Product): FormState => ({
   active: p.active !== false,
 });
 
-const parseSizes = (text: string) => text.split(",").map((s) => s.trim()).filter(Boolean);
+const parseSizes = (text: string) => text.split(",").map((s) => s.trim().replace(/\|/g, "/")).filter(Boolean);
+
+const cellUnits = (v: string | undefined) => (v === undefined || v.trim() === "" ? 0 : Number(v));
+const validUnits = (v: string | undefined) => v === undefined || v.trim() === "" || (Number.isInteger(Number(v)) && Number(v) >= 0 && Number(v) < 100000);
+
+/** Medida × color: una fila por combinación que se puede vender. */
+const combos = (f: FormState) => {
+  const colors = f.colors.filter((c) => c.name.trim());
+  return parseSizes(f.sizes).flatMap((size) => colors.map((c) => ({ size, color: c.name.trim(), hex: c.hex, key: variantKey(size, c.name.trim()) })));
+};
 
 function validate(f: FormState): Errors {
   const e: Errors = {};
@@ -66,7 +84,7 @@ function validate(f: FormState): Errors {
   else if (f.name.trim().length > LIMITS.name) e.name = `El nombre puede tener hasta ${LIMITS.name} letras.`;
   const price = Number(f.price);
   if (!f.price || !Number.isFinite(price) || price <= 0) e.price = "Ingresá un precio mayor a 0.";
-  if (f.stock !== "" && !(Number.isInteger(Number(f.stock)) && Number(f.stock) >= 0)) e.stock = "Ingresá un número entero, 0 o más.";
+  if (f.trackStock && combos(f).some((c) => !validUnits(f.stockBy[c.key]))) e.stock = "Revisá el stock: tienen que ser números enteros, 0 o más.";
   if (!f.image) e.image = "Agregá una foto: subila o pegá su dirección.";
   else if (!isSafeImageSrc(f.image)) e.image = "La dirección tiene que empezar con https:// (o subí la foto desde tu equipo).";
   const sizes = parseSizes(f.sizes);
@@ -180,7 +198,9 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
           brand: form.brand.trim(),
           category: form.category,
           price: Math.round(Number(form.price)),
-          stock: form.stock === "" ? undefined : Number(form.stock),
+          // Stock por medida y color. Sin control, ninguno de los dos campos se guarda.
+          stock: undefined,
+          stockBy: form.trackStock ? Object.fromEntries(combos(form).map((c) => [c.key, cellUnits(form.stockBy[c.key])])) : undefined,
           image: form.image,
           imageAlt: form.imageAlt.trim() || form.name.trim(),
           description: form.description.trim(),
@@ -247,30 +267,17 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
               ))}
             </Select>
           </div>
-          <div className="grid gap-5 md:grid-cols-2">
-            <Input
-              label="Precio (ARS)"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              step={1}
-              value={form.price}
-              error={errors.price}
-              hint={Number.isFinite(price) && price > 0 ? `Se muestra como ${formatPrice(price)}` : undefined}
-              onChange={(e) => set("price", e.target.value)}
-            />
-            <Input
-              label="Stock (opcional)"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={1}
-              value={form.stock}
-              error={errors.stock}
-              hint="Vacío = no controlar stock. En 0 se muestra «Sin stock»."
-              onChange={(e) => set("stock", e.target.value)}
-            />
-          </div>
+          <Input
+            label="Precio (ARS)"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            step={1}
+            value={form.price}
+            error={errors.price}
+            hint={Number.isFinite(price) && price > 0 ? `Se muestra como ${formatPrice(price)}` : undefined}
+            onChange={(e) => set("price", e.target.value)}
+          />
           <Textarea label="Descripción" maxLength={LIMITS.description} value={form.description} onChange={(e) => set("description", e.target.value)} />
           <Input
             label="Medidas"
@@ -282,6 +289,8 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
           />
 
           <ColorPalette value={form.colors} onChange={(next) => set("colors", next)} error={errors.colors} />
+
+          <StockMatrix form={form} rows={combos(form)} error={errors.stock} onTrack={(v) => set("trackStock", v)} onUnits={(key, v) => setForm((f) => ({ ...f, stockBy: { ...f.stockBy, [key]: v } }))} />
 
           <label className="flex min-h-11 cursor-pointer items-center gap-3">
             <input type="checkbox" checked={form.active} onChange={(e) => set("active", e.target.checked)} className="size-5 accent-primary" />
@@ -305,5 +314,81 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
         </LinkButton>
       </div>
     </form>
+  );
+}
+
+function StockMatrix({
+  form,
+  rows,
+  error,
+  onTrack,
+  onUnits,
+}: {
+  form: FormState;
+  rows: { size: string; color: string; hex: string; key: string }[];
+  error?: string;
+  onTrack: (v: boolean) => void;
+  onUnits: (key: string, value: string) => void;
+}) {
+  const sizes = [...new Set(rows.map((r) => r.size))];
+  const total = rows.reduce((n, r) => n + (validUnits(form.stockBy[r.key]) ? cellUnits(form.stockBy[r.key]) : 0), 0);
+  return (
+    <fieldset className="space-y-3">
+      <legend className="mb-1 text-sm font-medium">Stock por medida y color</legend>
+      <label className="flex min-h-11 cursor-pointer items-center gap-3">
+        <input type="checkbox" checked={form.trackStock} onChange={(e) => onTrack(e.target.checked)} className="size-5 accent-primary" />
+        <span>Controlar el stock de este producto</span>
+      </label>
+      {!form.trackStock ? (
+        <p className="text-sm text-muted">Sin control: el producto siempre figura disponible. Activalo para no vender lo que no tenés.</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted">Cargá las medidas y elegí los colores para repartir el stock.</p>
+      ) : (
+        <>
+          {form.legacyStock !== undefined && (
+            <p role="status" className="rounded-control border border-line bg-alt p-3 text-sm">
+              Este producto tenía un stock total de <strong>{form.legacyStock}</strong>. Repartilo acá por medida y color; hasta que guardes, la tienda sigue usando ese número.
+            </p>
+          )}
+          <p className="text-sm text-muted" aria-live="polite">
+            Total: <strong className="text-ink">{total}</strong> {total === 1 ? "unidad" : "unidades"}. Vacío cuenta como 0.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {sizes.map((size) => (
+              <div key={size} className="space-y-1 rounded-card border border-line bg-surface p-3">
+                <p className="text-sm font-medium">{size}</p>
+                <ul className="space-y-1">
+                  {rows
+                    .filter((r) => r.size === size)
+                    .map((r) => (
+                      <li key={r.key} className="flex items-center gap-3">
+                        <ColorDot hex={r.hex} />
+                        <span className="min-w-0 flex-1 truncate text-sm">{r.color}</span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          step={1}
+                          placeholder="0"
+                          aria-label={`Unidades de ${size} en ${r.color}`}
+                          aria-invalid={!validUnits(form.stockBy[r.key])}
+                          value={form.stockBy[r.key] ?? ""}
+                          onChange={(e) => onUnits(r.key, e.target.value)}
+                          className="min-h-11 w-24 rounded-control border border-line bg-surface px-3 text-right text-base"
+                        />
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </fieldset>
   );
 }

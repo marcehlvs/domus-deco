@@ -5,7 +5,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Button, LinkButton } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
-import { fetchAdminProducts, isLowStock, isSoldOut, removeProduct, setProductActive, type Product } from "../../data/products";
+import { fetchAdminProducts, isLowStock, isSoldOut, removeProduct, setProductActive, totalStock, type Product } from "../../data/products";
 import { downloadStockSheet } from "../../lib/downloadStockSheet";
 import { formatPrice } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
@@ -131,9 +131,9 @@ export default function ProductsAdmin() {
                     {isSoldOut(p) ? (
                       <Badge tone="danger">Sin stock</Badge>
                     ) : isLowStock(p) ? (
-                      <Badge tone="warning">Stock bajo: {p.stock}</Badge>
+                      <Badge tone="warning">Stock bajo: {totalStock(p)}</Badge>
                     ) : (
-                      p.stock !== undefined && <Badge>Stock: {p.stock}</Badge>
+                      totalStock(p) !== undefined && <Badge>Stock: {totalStock(p)}</Badge>
                     )}
                   </div>
                 </div>

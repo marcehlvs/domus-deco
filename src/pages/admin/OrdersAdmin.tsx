@@ -1,13 +1,16 @@
 import { useState } from "react";
+import { MessageCircle } from "lucide-react";
 import { DemoOrders } from "../../components/admin/DemoOrders";
 import { OrderStatusBadge } from "../../components/admin/OrderStatusBadge";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Select } from "../../components/ui/Select";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
-import { fetchOrders, setOrderStatus, statusLabels, statuses, type OrderStatus } from "../../data/orders";
+import { deliveryLabels } from "../../data/delivery";
+import { deductsStock, fetchOrders, setOrderStatus, statusLabels, statuses, type Order, type OrderStatus } from "../../data/orders";
 import { formatDay, formatPrice } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
+import { customerWhatsappLink } from "../../lib/whatsapp";
 import { cn } from "../../lib/cn";
 
 export default function OrdersAdmin() {
@@ -15,16 +18,26 @@ export default function OrdersAdmin() {
   const [filter, setFilter] = useState<OrderStatus | "todos">("todos");
   const [overrides, setOverrides] = useState<Record<string, OrderStatus>>({});
   const [failed, setFailed] = useState(false);
+  const [short, setShort] = useState<string[]>([]);
+  const [changing, setChanging] = useState<string | null>(null);
 
-  const change = async (id: string, status: OrderStatus) => {
+  const change = async (order: Order, status: OrderStatus) => {
     setFailed(false);
+    setShort([]);
+    setChanging(order.id);
     try {
-      await setOrderStatus(id, status);
-      setOverrides((o) => ({ ...o, [id]: status }));
+      // Al pasar a «Pagado» se descuenta el stock; al cancelar un pedido ya pagado, vuelve.
+      const missing = await setOrderStatus(order.id, status);
+      setOverrides((o) => ({ ...o, [order.id]: status }));
+      setShort(missing);
     } catch {
       setFailed(true);
+    } finally {
+      setChanging(null);
     }
   };
+
+  const whatsappMessage = (o: Order) => `Hola ${o.customer.name.split(" ")[0]}! Te escribo por tu pedido #${o.number} en Domus Deco.`;
 
   if (state.status === "loading")
     return (
@@ -77,9 +90,16 @@ export default function OrdersAdmin() {
         ))}
       </div>
 
+      <p className="text-sm text-muted">Al marcar un pedido como «Pagado» se descuenta el stock; si lo cancelás después, vuelve.</p>
+
       {failed && (
         <p role="alert" className="text-danger">
           No pudimos cambiar el estado. Intentá de nuevo.
+        </p>
+      )}
+      {short.length > 0 && (
+        <p role="alert" className="text-danger">
+          Ojo: no alcanzaba el stock de {short.join(", ")}. Quedó en 0: revisalo en Productos.
         </p>
       )}
 
@@ -88,7 +108,7 @@ export default function OrdersAdmin() {
       ) : (
         <ul className="divide-y divide-line border-y border-line">
           {shown.map((o) => (
-            <li key={o.id} className="grid gap-3 py-4 md:grid-cols-[1fr_auto_11rem] md:items-center md:gap-6">
+            <li key={o.id} className="grid gap-3 py-4 md:grid-cols-[1fr_auto_11rem] md:items-start md:gap-6">
               <div className="space-y-1">
                 <p>
                   <span className="font-medium">#{o.number}</span> · {o.customer.name}
@@ -99,13 +119,55 @@ export default function OrdersAdmin() {
                     </span>
                   )}
                 </p>
-                <p className="text-sm text-muted">{o.items.map((i) => `${i.qty} × ${i.name} (${i.color})`).join(" · ")}</p>
+                <ul className="text-sm text-muted">
+                  {o.items.map((i, n) => (
+                    <li key={`${i.productId}-${i.size}-${i.color}-${n}`}>
+                      {i.qty} × {i.name} ({i.color}, {i.size})
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-sm">
+                  <span className="text-muted">Entrega:</span> {deliveryLabels[o.delivery]}
+                  {o.customer.address && ` · ${o.customer.address}`}
+                </p>
+                {o.note && (
+                  <p className="text-sm">
+                    <span className="text-muted">Aclaraciones:</span> {o.note}
+                  </p>
+                )}
+                <p className="flex flex-wrap items-center gap-x-3 text-sm">
+                  <span>
+                    <span className="text-muted">Tel.:</span> {o.customer.phone || "—"}
+                  </span>
+                  {(() => {
+                    const link = customerWhatsappLink(o.customer.phone, whatsappMessage(o));
+                    return (
+                      link && (
+                        <a href={link} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 font-semibold underline">
+                          <MessageCircle aria-hidden className="size-4" />
+                          Escribirle por WhatsApp
+                          <span className="sr-only"> (se abre en una pestaña nueva)</span>
+                        </a>
+                      )
+                    );
+                  })()}
+                  <a href={`mailto:${o.customer.email}`} className="inline-flex min-h-11 items-center underline">
+                    {o.customer.email}
+                  </a>
+                </p>
               </div>
               <div className={cn("flex items-center justify-between gap-3 md:flex-col md:items-end")}>
                 <p className="text-lg font-bold">{formatPrice(o.total)}</p>
                 <OrderStatusBadge status={o.status} />
               </div>
-              <Select label={`Estado del pedido #${o.number}`} hideLabel value={o.status} onChange={(e) => change(o.id, e.target.value as OrderStatus)}>
+              <Select
+                label={`Estado del pedido #${o.number}`}
+                hideLabel
+                value={o.status}
+                disabled={changing === o.id}
+                hint={deductsStock(o.status) && !o.demo ? "Stock descontado" : undefined}
+                onChange={(e) => change(o, e.target.value as OrderStatus)}
+              >
                 {statuses.map((s) => (
                   <option key={s} value={s}>
                     {statusLabels[s]}

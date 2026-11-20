@@ -30,13 +30,15 @@ service cloud.firestore {
     // ---------- Productos: los ve cualquiera, solo administración los cambia ----------
     function validProduct(p) {
       return p.keys().hasOnly(['id', 'slug', 'name', 'brand', 'category', 'price', 'stock', 'image', 'imageAlt',
-                               'description', 'sizes', 'colors', 'active', 'custom'])
+                               'description', 'sizes', 'colors', 'active', 'custom', 'stockBy'])
         && p.keys().hasAll(['name', 'category', 'price', 'image'])
         && text(p.name, 100)
         && textOrEmpty(p.get('brand', ''), 60)
         && text(p.category, 40)
         && p.price is int && p.price > 0 && p.price < 100000000
         && (!('stock' in p) || (p.stock is int && p.stock >= 0 && p.stock < 100000))
+        // Stock por medida y color: mapa «medida|color» → unidades. Cada valor se cuida desde el panel (las reglas no pueden recorrer un mapa).
+        && (!('stockBy' in p) || (p.stockBy is map && p.stockBy.size() <= 900))
         && text(p.image, 700000)
         && textOrEmpty(p.get('imageAlt', ''), 200)
         && textOrEmpty(p.get('description', ''), 2000)
@@ -67,23 +69,46 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ---------- Contador de pedidos: da el número «#1, #2…» ----------
+    // Cualquier persona con sesión puede sumar 1 (al hacer un pedido), nunca otra cosa. No se borra ni se baja.
+    match /counters/{name} {
+      allow read: if signedIn() && name == 'orders';
+      allow create: if signedIn() && name == 'orders'
+        && request.resource.data.keys().hasOnly(['last'])
+        && request.resource.data.last == 1;
+      allow update: if signedIn() && name == 'orders'
+        && request.resource.data.keys().hasOnly(['last'])
+        && request.resource.data.last == resource.data.last + 1;
+    }
+
     // ---------- Pedidos: cada persona ve solo los suyos ----------
+    // Se crean siempre «pendiente» y con el número del contador (getAfter mira el contador ya actualizado
+    // en la misma transacción). Los precios y el total los manda el navegador: sirven para coordinar a mano
+    // por WhatsApp, pero NO alcanzan para cobrar online. Antes de Mercado Pago el total se recalcula en el servidor.
     function validOrder(o) {
-      return o.keys().hasOnly(['userId', 'number', 'status', 'items', 'total', 'customer', 'createdAt'])
-        && o.keys().hasAll(['userId', 'status', 'items', 'total', 'customer'])
+      return o.keys().hasOnly(['userId', 'number', 'status', 'items', 'total', 'customer', 'delivery', 'note', 'stockApplied', 'createdAt'])
+        && o.keys().hasAll(['userId', 'number', 'status', 'items', 'total', 'customer', 'delivery', 'createdAt'])
         && o.userId == request.auth.uid
         && o.status == 'pendiente'
+        && o.number is int && o.number > 0
+        && getAfter(/databases/$(database)/documents/counters/orders).data.last == o.number
+        && o.createdAt == request.time
+        && o.get('stockApplied', false) == false
+        && o.delivery in ['whatsapp', 'retiro']
+        && textOrEmpty(o.get('note', ''), 500)
         && o.items is list && o.items.size() > 0 && o.items.size() <= 50
         && o.total is number && o.total >= 0 && o.total < 1000000000
         && o.customer is map
         && o.customer.keys().hasOnly(['name', 'email', 'phone', 'address'])
-        && textOrEmpty(o.customer.get('name', ''), 100)
-        && textOrEmpty(o.customer.get('email', ''), 254);
+        && text(o.customer.get('name', ''), 100)
+        && textOrEmpty(o.customer.get('email', ''), 254)
+        && text(o.customer.get('phone', ''), 30)
+        && textOrEmpty(o.customer.get('address', ''), 200);
     }
     match /orders/{id} {
       allow create: if signedIn() && validOrder(request.resource.data);
       allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
-      // El cliente nunca cambia ni borra un pedido. Solo administración (y, más adelante, el webhook de Mercado Pago, que no pasa por estas reglas).
+      // El cliente nunca cambia ni borra un pedido. Solo administración (cambia el estado y el stock) y, más adelante, el webhook de Mercado Pago, que no pasa por estas reglas.
       allow update, delete: if isAdmin();
     }
 

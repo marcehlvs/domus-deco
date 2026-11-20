@@ -16,17 +16,17 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 - [x] **Pantalla de intro** · Al abrir la portada (`/`) se ve el video de Domus Deco a pantalla completa y un botón «Ingresar» (en una fila propia, debajo) que aparece a los 2 segundos (también entra con Escape). Aparece una vez por pestaña; los links directos (`/tienda`, `/producto/…`) entran sin intro. Código en `src/components/intro/IntroScreen.tsx` y `src/App.tsx`; el video y el póster están en `public/media/`
 - [x] **Panel de administración** · `/admin`: dashboard de ingresos, carga de productos, **categorías** (pestaña «Categorías»: agregar, renombrar y eliminar; no se puede eliminar una con productos; código en `src/store/categories.ts`) y pedidos. Con Firebase configurado, productos y categorías se guardan en Firestore; sin Firebase (primer día en tu computadora), en el navegador (modo demostración)
 
-**Falta (en este orden):**
+**Falta (en este orden):** — la lista completa y al día está en [`A_RESOLVER.md`](A_RESOLVER.md)
 
-- [ ] **Paso 5** · Firebase. **(a) hecho:** ingreso y registro con correo y Google, «Mi cuenta», rutas protegidas y administrador por colección `admins`. **(b) hecho:** productos y categorías en Firestore (colecciones `products` y `categories`; el panel pide una cuenta de la colección `admins`; si ya cargaste cosas en el navegador, el panel te ofrece subirlas). **(b) falta:** pedidos en Firestore (van con el paso 6). **(c) falta:** carrito en la cuenta
-- [ ] **Paso 6** · Checkout y pedidos en Firestore (estado «pendiente de pago»)
+- [ ] **Paso 5** · Firebase. **(a) hecho:** ingreso y registro con correo y Google, «Mi cuenta», rutas protegidas y administrador por colección `admins`. **(b) hecho:** productos y categorías en Firestore (colecciones `products` y `categories`; el panel pide una cuenta de la colección `admins`; si ya cargaste cosas en el navegador, el panel te ofrece subirlas). **(b) hecho:** pedidos en Firestore (colecciones `orders` y `counters`). **(c) falta:** carrito en la cuenta
+- [x] **Paso 6** · Checkout y pedidos en Firestore (estado «pendiente de pago»), stock por medida y color y entrega a coordinar por WhatsApp. **Falta probarlo en tu Firebase y publicar las reglas nuevas**: el detalle y lo pendiente están en [`A_RESOLVER.md`](A_RESOLVER.md)
 - [ ] **Paso 7** · Deploy en Firebase Hosting (la guía está más abajo; el `firebase.json` ya está en el repo)
 - [ ] **Paso 8** · Mercado Pago (requiere plan Blaze: Cloud Functions para la preferencia y el webhook)
 
 **Por tener en cuenta**
 
 - `/admin` pide ingresar con una cuenta cuyo UID esté en la colección `admins` (ver «Quién es administrador»). Solo si no hay Firebase configurado (sin `.env.local`) abre sin ingresar, y únicamente con `npm run dev`.
-- Ya no hay productos de muestra: mientras no cargues ninguno, la tienda muestra el aviso de catálogo vacío y el Home oculta los destacados. Los **colores** de cada producto se eligen tocando la paleta (`src/data/swatches.ts`; para sumar un color, agregá una línea ahí) y «Otro color» queda para casos raros. Los **pedidos** del panel todavía son de demostración (`localStorage`), hasta el paso 6.
+- Ya no hay productos de muestra: mientras no cargues ninguno, la tienda muestra el aviso de catálogo vacío y el Home oculta los destacados. Los **colores** de cada producto se eligen tocando la paleta (`src/data/swatches.ts`; para sumar un color, agregá una línea ahí) y «Otro color» queda para casos raros. Los **pedidos** del panel son reales cuando hay Firebase; sin Firebase (modo demostración) se guardan en el navegador.
 - **Cambiar el video de la intro**: reemplazá `public/media/domus-deco-hero.mp4` (y el póster `domus-deco-poster.webp`, el primer cuadro). Si el navegador tiene «reducir movimiento», la intro muestra solo el póster. Para volver a verla: abrí la tienda en una pestaña nueva.
 - Redes sociales y contacto del pie: se cargan en `src/data/store.ts` (los campos vacíos no se muestran). Los textos de envíos / cambios / pagos del Home están aparte, en `src/data/perks.ts`: no los borres de ahí, el Home los lee.
 - **Antes de publicar**: completá y revisá los textos de `src/data/legal.ts` (ver «Textos legales»). Mientras `reviewed` sea `false`, esas páginas y sus links no aparecen en la tienda publicada.
@@ -133,44 +133,7 @@ La idea es que administrador sea quien tenga un documento en la colección `admi
 
 Están guardadas en `firestore.rules` y `firebase.json` ya las apunta. Se publican con `firebase deploy --only firestore:rules` (o pegándolas en Firestore → Reglas → Publicar).
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function isAdmin() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
-    }
-
-    match /products/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /orders/{id} {
-      allow create: if request.auth != null
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'pendiente';
-      allow read: if isAdmin()
-        || (request.auth != null && resource.data.userId == request.auth.uid);
-      allow update, delete: if isAdmin();
-    }
-
-    match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-
-    match /carts/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-
-    match /admins/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow write: if false;
-    }
-  }
-}
-```
+El texto completo y comentado de las reglas vive **solo** en `firestore.rules` (no se copia acá para que no quede desactualizado). Cubre `products`, `categories`, `orders`, `counters`, `users`, `carts` y `admins`; todo lo demás está prohibido.
 
 Se carga con `firebase deploy --only firestore:rules`. Dos límites a tener en cuenta: los productos ocultos se filtran en la app, no en las reglas; y el total de un pedido lo manda el navegador, por eso en el paso 8 **la Cloud Function lo recalcula con los precios de Firestore antes de cobrar**.
 
@@ -216,7 +179,7 @@ firebase.json          Hosting: publica dist y redirige todo a index.html
 - **Ficha de producto en mobile**: barra fija abajo con precio y «Agregar al carrito». En 768+ vuelve el botón dentro de la ficha. Solo hay uno visible a la vez.
 - **Búsqueda y orden en la dirección**: `/tienda?q=sabana&orden=menor`. Se puede compartir el enlace y el botón «atrás» no se llena de pasos. Lo agotado va al final salvo que se ordene por precio o nombre.
 - **WhatsApp en la ficha**: el botón arma el mensaje con el producto, la medida y el color elegidos, y el enlace al producto. Usa el número de `src/data/store.ts`; si está vacío, el botón no aparece.
-- **Stock por producto, no por variante**: el carrito suma todas las medidas y colores de un producto contra el mismo stock. Si más adelante hace falta stock por medida, es un cambio en el modelo y en el paso 5.
+- **Stock por medida y color**: cada combinación tiene sus unidades (`stockBy` en el producto, clave «medida|color»). Los productos con el formato anterior (un solo `stock`) siguen andando, con el stock compartido, hasta que se editan.
 - **Aviso al agregar**: `Toast` con `role="status"`, se cierra solo a los 5 s y respeta `prefers-reduced-motion`.
 - **Mobile first**: el diseño base es 375 px; `md:` (768) y `xl:` (1280) reordenan la composición, no solo agrandan.
 - **Accesibilidad**: enlace «Saltar al contenido», `aria-label` en botones de ícono, foco visible, objetivos táctiles de 44 px, `aria-current` en navegación, `<dialog>` nativo en el modal, errores de formulario con `role="alert"` y `prefers-reduced-motion` respetado.
@@ -240,7 +203,7 @@ Entrá a `/admin` con `npm run dev` (hay un link «Admin» en la barra).
 - **Panel**: ingresos, pedidos cobrados, ticket promedio, pendientes de pago, ingresos por día (7/30/90 días) y más vendidos. Solo cuentan como ingreso los pedidos *pagado* y *enviado*.
 - **Productos**: alta, edición, ocultar/mostrar y eliminar. La foto se sube desde el equipo (se achica en el navegador) o se pega una URL. Los productos de muestra viven en el código y no se editan desde el panel.
 - **Pedidos**: lista con filtro por estado y cambio de estado.
-- **Stock**: campo opcional por producto (vacío = no se controla). En 0 la tienda muestra «Sin stock» y no deja comprar; con 3 o menos avisa «Quedan N». El carrito nunca deja pasar el stock disponible. **El stock todavía no se descuenta al comprar**: eso se hace cuando el pago queda confirmado (pasos 6 y 8).
+- **Stock**: se controla por medida y color (o no se controla, si se desactiva en el formulario). En 0 la combinación figura «Sin stock» y no deja comprar; con 3 o menos avisa «Quedan N». El carrito y el checkout nunca dejan pasar el stock disponible. **El stock se descuenta cuando el pedido se marca «Pagado»** en `/admin/pedidos` y vuelve si se cancela; un pedido pendiente no reserva unidades (ver `A_RESOLVER.md`).
 - **Datos de ejemplo**: en desarrollo, el botón «Cargar pedidos de ejemplo» llena el dashboard. Se marcan como «Ejemplo» y se borran sin tocar los reales.
 
 El checkout (paso 6) llama a `createOrder` de `src/data/orders.ts`.

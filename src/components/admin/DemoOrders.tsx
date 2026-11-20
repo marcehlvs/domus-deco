@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Button } from "../ui/Button";
 import { clearDemoOrders, seedDemoOrders } from "../../data/orders";
+import { usesFirebase } from "../../data/products";
 
 // Solo en desarrollo: carga pedidos de ejemplo para ver el panel con datos. No se compila en producción.
 export function DemoOrders({ onDone, hasDemo }: { onDone: () => void; hasDemo?: boolean }) {
   const [busy, setBusy] = useState(false);
-  if (!import.meta.env.DEV) return null;
+  if (!import.meta.env.DEV || usesFirebase) return null;
 
   const run = async (job: () => Promise<void>) => {
     setBusy(true);

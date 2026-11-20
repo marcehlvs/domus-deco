@@ -13,6 +13,8 @@ export interface StockRow {
   visible: boolean;
   sizes: string;
   colors: string;
+  /** Stock por medida y color (si el producto lo controla así). Va en la segunda hoja. */
+  variants?: { size: string; color: string; stock: number }[];
 }
 
 type Excel = typeof ExcelJS;
@@ -222,10 +224,62 @@ export function buildStockWorkbook(
   });
 
   const note = ws.getCell(`A${last + 2}`);
-  note.value = "Podés editar Precio y Unidades: Estado y el resumen de arriba se recalculan solos. Los cambios quedan solo en esta planilla; para actualizar la tienda, cargalos en el panel.";
+  note.value =
+    "Podés editar Precio y Unidades: Estado y el resumen de arriba se recalculan solos. Los cambios quedan solo en esta planilla; para actualizar la tienda, cargalos en el panel. El stock de cada medida y color está en la hoja «Por medida y color».";
   note.font = { name: FONT, size: 9, italic: true, color: { argb: C.label } };
 
   ws.autoFilter = { from: { row: HEADER_ROW, column: 1 }, to: { row: last, column: LAST_COL } };
+
+  // ── Hoja 2: una fila por medida y color ─────────────────────────
+  const detail = rows.flatMap((r) => (r.variants ?? []).map((v) => ({ product: r.name, ...v })));
+  if (detail.length > 0) {
+    const d = wb.addWorksheet("Por medida y color", {
+      views: [{ state: "frozen", ySplit: 1, showGridLines: false }],
+      pageSetup: { orientation: "portrait", paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: "1:1" },
+      headerFooter: { oddFooter: `&L${opts.storeName}&RPágina &P de &N` },
+    });
+    d.columns = [{ width: 40 }, { width: 18 }, { width: 18 }, { width: 12 }, { width: 18 }];
+    const dh = d.getRow(1);
+    dh.height = 28;
+    ["Producto", "Medida", "Color", "Unidades", "Estado"].forEach((h, i) => {
+      const cell = dh.getCell(i + 1);
+      cell.value = h;
+      cell.fill = fill(C.ink);
+      cell.font = { name: FONT, size: 10, bold: true, color: { argb: C.cream } };
+      cell.alignment = { vertical: "middle", horizontal: i >= 3 ? "center" : "left", indent: i >= 3 ? 0 : 1 };
+    });
+    detail.forEach((v, i) => {
+      const r = i + 2;
+      const row = d.getRow(r);
+      row.height = 22;
+      row.getCell(1).value = v.product;
+      row.getCell(2).value = v.size;
+      row.getCell(3).value = v.color;
+      row.getCell(4).value = v.stock;
+      row.getCell(5).value = {
+        formula: `IF(D${r}<=0,"Sin stock",IF(D${r}<=${opts.lowStock},"Stock bajo","Disponible"))`,
+        result: estadoDe(v.stock, opts.lowStock),
+      };
+      for (let c = 1; c <= 5; c++) {
+        const cell = row.getCell(c);
+        if (i % 2 === 1) cell.fill = fill(C.band);
+        cell.font = { name: FONT, size: 10, bold: c === 1, color: { argb: C.text } };
+        cell.border = { bottom: { style: "thin", color: { argb: C.line } } };
+        cell.alignment = { vertical: "middle", horizontal: c >= 4 ? "center" : "left", indent: c >= 4 ? 0 : 1 };
+      }
+      row.getCell(4).numFmt = "0";
+    });
+    const dl = detail.length + 1;
+    d.addConditionalFormatting({
+      ref: `E2:E${dl}`,
+      rules: [
+        { type: "expression", priority: 1, formulae: ['$E2="Disponible"'], style: estadoStyle("FFE1F0E4", "FF1F6B3A") },
+        { type: "expression", priority: 2, formulae: ['$E2="Stock bajo"'], style: estadoStyle("FFFBEACB", "FF8A5A00") },
+        { type: "expression", priority: 3, formulae: ['$E2="Sin stock"'], style: estadoStyle("FFF8DAD6", "FF9B2C20") },
+      ],
+    });
+    d.autoFilter = { from: { row: 1, column: 1 }, to: { row: dl, column: 5 } };
+  }
 
   return wb;
 }

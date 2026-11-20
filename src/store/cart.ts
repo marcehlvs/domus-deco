@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Product } from "../data/products";
+import { claimed, unitsFor, type Product } from "../data/products";
 
 // Se guarda solo lo que elige la persona. Precio, nombre y foto se leen del catálogo,
 // así nunca quedan desactualizados (y la foto no depende de un nombre de archivo con hash).
@@ -14,7 +14,7 @@ export interface CartItem {
 
 interface CartState {
   items: CartItem[];
-  /** false si ya hay en el carrito todo el stock disponible del producto. */
+  /** false si ya hay en el carrito todo el stock disponible de esa medida y color. */
   add: (product: Product, size: string, color: string) => boolean;
   setQty: (key: string, qty: number) => void;
   remove: (key: string) => void;
@@ -26,9 +26,9 @@ export const useCart = create<CartState>()(
     (set, get) => ({
       items: [],
       add: (product, size, color) => {
-        // El stock es por producto: cuenta todas sus medidas y colores juntos.
-        const inCart = get().items.filter((i) => i.productId === product.id).reduce((n, i) => n + i.qty, 0);
-        if (product.stock !== undefined && inCart >= product.stock) return false;
+        // Con stock por medida y color el tope es de esa combinación; con el stock compartido (formato anterior), de todo el producto.
+        const limit = unitsFor(product, size, color);
+        if (limit !== undefined && claimed(product, size, color, get().items) >= limit) return false;
         set((s) => {
           const key = `${product.id}|${size}|${color}`;
           if (s.items.some((i) => i.key === key)) {

@@ -16,6 +16,8 @@ import ProductsAdmin from "./pages/admin/ProductsAdmin";
 import { legal } from "./data/legal";
 import Account from "./pages/Account";
 import Cart from "./pages/Cart";
+import Checkout from "./pages/Checkout";
+import OrderPlaced from "./pages/OrderPlaced";
 import Legal from "./pages/Legal";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
@@ -52,7 +54,8 @@ export default function App() {
             <Route path="ingresar" element={<Login />} />
             <Route element={<RequireAuth />}>
               <Route path="cuenta" element={<Account />} />
-              <Route path="checkout" element={<Pending title="Finalizar compra" />} />
+              <Route path="checkout" element={<Checkout />} />
+              <Route path="pedido/:id" element={<OrderPlaced />} />
             </Route>
             <Route path="admin" element={<AdminGuard />}>
               <Route element={<AdminLayout />}>

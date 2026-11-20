@@ -1,5 +1,5 @@
 import logoUrl from "../assets/logo-planilla.png";
-import { LOW_STOCK, type Product } from "../data/products";
+import { LOW_STOCK, totalStock, variantKey, type Product } from "../data/products";
 import { store } from "../data/store";
 import { categoryName } from "../store/categories";
 import { buildStockWorkbook, type StockRow } from "./stockSheet";
@@ -11,10 +11,13 @@ const toRow = (p: Product): StockRow => ({
   brand: p.brand,
   category: categoryName(p.category),
   price: p.price,
-  stock: p.stock,
+  stock: totalStock(p),
   visible: p.active !== false,
   sizes: p.sizes.join(", "),
   colors: p.colors.map((c) => c.name).join(", "),
+  variants: p.stockBy
+    ? p.sizes.flatMap((size) => p.colors.map((c) => ({ size, color: c.name, stock: p.stockBy![variantKey(size, c.name)] ?? 0 })))
+    : undefined,
 });
 
 /** Baja stock-domus-deco-AAAA-MM-DD.xlsx. ExcelJS se carga recién al hacer clic, así no pesa en la tienda. */

@@ -128,7 +128,8 @@ La lista pensaba en apps con servidor propio, base SQL y cookies. Domus Deco es 
   | --- | --- | --- |
   | `products` | cualquiera | solo admins, con datos válidos (precio entero > 0, nombre, imagen, largos) |
   | `categories` | cualquiera | solo admins, con nombre (hasta 40 letras), frase (hasta 60) y orden |
-  | `orders` | admins, o la persona dueña del pedido | crear: solo con sesión, `userId` propio, estado `pendiente` y datos válidos. Cambiar o borrar: solo admins |
+  | `orders` | admins, o la persona dueña del pedido | crear: solo con sesión, `userId` propio, estado `pendiente`, teléfono, entrega válida y el número que le toca según el contador. Cambiar o borrar: solo admins |
+  | `counters` | cualquier persona con sesión (solo el documento `orders`) | crear con 1 o subir de a 1; nunca bajar ni borrar. Da el número «#1, #2…» de los pedidos; por eso cualquiera con cuenta puede ver cuántos pedidos hubo en total |
   | `users/{uid}` | solo esa persona | solo esa persona, solo `email`, `name`, `updatedAt` |
   | `carts/{uid}` | solo esa persona | solo esa persona, hasta 100 ítems |
   | `admins/{uid}` | solo uno mismo | **nadie** (se crean a mano) |

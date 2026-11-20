@@ -13,6 +13,8 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 - [x] **Home** · Hero, categorías, franja de envíos / cambios / pagos y productos destacados
 - [x] **Tienda** · Buscador (sin importar tildes), orden por precio / nombre, «Sin stock» y botón «Consultar por WhatsApp» en cada producto
 - [x] **Filtros** · Botón «Filtros» en la tienda: rango de precio, color, medida y «solo con stock», más las categorías de arriba. Viven en la dirección (`?min=…&max=…&color=…&medida=…&stock=1`), se muestran como chips que se quitan de a uno y se pueden compartir. Código en `src/lib/filters.ts` y `src/components/store/FiltersModal.tsx`
+- [x] **Compartir y Google** · Botón «Compartir» en cada producto (foto + nombre + precio + link desde el celular), vista previa del link con foto, nombre y precio en WhatsApp/Instagram, título y descripción por producto, `sitemap.xml` y `robots.txt`. Las páginas con vista previa se generan al hacer `npm run build` (ver `A_RESOLVER.md`, punto 6)
+- [x] **Varias fotos por producto** · La principal más hasta 4 extra, con carrusel en la ficha (deslizable en el celular). Las extra se guardan en `products/{id}/photos` para no cargarlas en el listado. Ver `A_RESOLVER.md`, punto 7
 - [x] **Pantalla de intro** · Al abrir la portada (`/`) se ve el video de Domus Deco a pantalla completa y un botón «Ingresar» (en una fila propia, debajo) que aparece a los 2 segundos (también entra con Escape). Aparece una vez por pestaña; los links directos (`/tienda`, `/producto/…`) entran sin intro. Código en `src/components/intro/IntroScreen.tsx` y `src/App.tsx`; el video y el póster están en `public/media/`
 - [x] **Panel de administración** · `/admin`: dashboard de ingresos, carga de productos, **categorías** (pestaña «Categorías»: agregar, renombrar y eliminar; no se puede eliminar una con productos; código en `src/store/categories.ts`) y pedidos. Con Firebase configurado, productos y categorías se guardan en Firestore; sin Firebase (primer día en tu computadora), en el navegador (modo demostración)
 
@@ -36,7 +38,7 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm run build    # chequea tipos y genera /dist
+npm run build    # chequea tipos, genera /dist y las vistas previas para compartir (scripts/prerender.mjs)
 ```
 
 Revisá `/estilos` para ver todos los componentes y estados juntos. Probalos en 375, 768 y 1280 px, en claro y oscuro.

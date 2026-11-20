@@ -56,7 +56,7 @@ La lista pensaba en apps con servidor propio, base SQL y cookies. Domus Deco es 
   1. Crear una clave **reCAPTCHA v3** en <https://www.google.com/recaptcha/admin> con los dominios `domusdeco.web.app`, `domusdeco.firebaseapp.com`, tu dominio propio y `localhost`.
   2. En Firebase → **App Check** → tu app web → registrá reCAPTCHA v3 con la **clave secreta** (la secreta va solo ahí).
   3. Poné la **clave de sitio** (la pública) en `.env.local` como `VITE_RECAPTCHA_SITE_KEY` (hay un `.env.example`) y publicá.
-  4. Mirá las métricas de App Check unos días. Recién cuando casi todo el tráfico figure como «verificado», activá **Hacer cumplir** (Enforce) en Authentication y Firestore. Antes de eso, App Check no bloquea a nadie.
+  4. Mirá las métricas de App Check unos días. Recién cuando casi todo el tráfico figure como «verificado», activá **Hacer cumplir** (Enforce) en Authentication y Firestore. Antes de eso, App Check no bloquea a nadie. **Ojo:** al activar «Hacer cumplir» en Firestore, el script `scripts/prerender.mjs` (que lee los productos al hacer `npm run build` para armar las vistas previas al compartir) deja de poder leerlos sin sesión; el sitio sigue funcionando, pero esas vistas previas no se generan. Se resuelve con una Cloud Function (plan Blaze).
   5. Para trabajar en tu computadora, App Check imprime un **token de depuración** en la consola del navegador; se registra en la consola de Firebase (App Check → Administrar tokens de depuración).
 
 ## 2. Limitar intentos de login

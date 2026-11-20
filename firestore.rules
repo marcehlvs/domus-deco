@@ -30,7 +30,7 @@ service cloud.firestore {
     // ---------- Productos: los ve cualquiera, solo administración los cambia ----------
     function validProduct(p) {
       return p.keys().hasOnly(['id', 'slug', 'name', 'brand', 'category', 'price', 'discount', 'stock', 'image', 'imageAlt',
-                               'description', 'sizes', 'colors', 'active', 'custom', 'stockBy'])
+                               'description', 'sizes', 'colors', 'active', 'custom', 'stockBy', 'extraPhotos'])
         && p.keys().hasAll(['name', 'category', 'price', 'image'])
         && text(p.name, 100)
         && textOrEmpty(p.get('brand', ''), 60)
@@ -41,6 +41,8 @@ service cloud.firestore {
         // Stock por medida y color: mapa «medida|color» → unidades. Cada valor se cuida desde el panel (las reglas no pueden recorrer un mapa).
         && (!('stockBy' in p) || (p.stockBy is map && p.stockBy.size() <= 900))
         && text(p.image, 700000)
+        // Cuántas fotos extra tiene (viven en products/{id}/photos; ver más abajo).
+        && (!('extraPhotos' in p) || (p.extraPhotos is int && p.extraPhotos >= 1 && p.extraPhotos <= 4))
         && textOrEmpty(p.get('imageAlt', ''), 200)
         && textOrEmpty(p.get('description', ''), 2000)
         && p.get('sizes', []) is list && p.get('sizes', []).size() <= 30
@@ -52,6 +54,16 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isAdmin() && validProduct(request.resource.data);
       allow delete: if isAdmin();
+
+      // Fotos extra del producto: hasta 4, con IDs «1» a «4». Se leen solo en la ficha y el panel, no en el listado de la tienda.
+      match /photos/{n} {
+        allow read: if true;
+        allow create, update: if isAdmin()
+          && n in ['1', '2', '3', '4']
+          && request.resource.data.keys().hasOnly(['src'])
+          && text(request.resource.data.src, 700000);
+        allow delete: if isAdmin();
+      }
     }
 
     // ---------- Categorías: las ve cualquiera, solo administración las cambia ----------

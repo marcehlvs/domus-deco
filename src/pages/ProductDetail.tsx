@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, MessageCircle, ShoppingBag } from "lucide-react";
+import { ArrowLeft, MessageCircle, Share2, ShoppingBag } from "lucide-react";
 import { Badge } from "../components/ui/Badge";
 import { Button, buttonStyles, LinkButton } from "../components/ui/Button";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
 import { Price } from "../components/product/Price";
+import { ProductGallery } from "../components/product/ProductGallery";
 import { LOW_STOCK, fetchProduct, isSoldOut, isVariantSoldOut, unitsFor, type Product } from "../data/products";
-import { formatPrice } from "../lib/format";
+import { metaDescription, usePageMeta } from "../lib/pageMeta";
+import { shareProduct } from "../lib/share";
 import { useAsync } from "../lib/useAsync";
 import { whatsappLink } from "../lib/whatsapp";
 import { useCart } from "../store/cart";
@@ -64,6 +66,7 @@ const option =
   "peer-checked:border-primary peer-checked:bg-primary peer-checked:text-on-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary";
 
 function ProductView({ product }: { product: Product }) {
+  usePageMeta(product.name, metaDescription(product));
   // Arranca en la primera combinación que tenga stock (si ninguna tiene, en la primera).
   const first = product.sizes.flatMap((s) => product.colors.map((c) => ({ size: s, color: c.name }))).find((v) => !isVariantSoldOut(product, v.size, v.color));
   const [size, setSize] = useState(first?.size ?? product.sizes[0]);
@@ -80,19 +83,18 @@ function ProductView({ product }: { product: Product }) {
     if (add(product, size, color)) show("Agregado al carrito", { to: "/carrito", label: "Ver carrito" });
     else warn(comboSoldOut ? "Esa medida y color no tienen stock" : "Ya tenés en el carrito todo el stock disponible de esta combinación");
   };
+  const share = async () => {
+    const result = await shareProduct(product);
+    if (result === "copied") show("Link copiado");
+    else if (result === "failed") warn("No pudimos compartir. Copiá la dirección de la barra del navegador.");
+  };
   const whatsapp = whatsappLink(
     `Hola! Quería consultar por "${product.name}" (medida ${size}, color ${color}).\n${window.location.origin}/producto/${product.slug}`,
   );
 
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,26rem)_1fr] md:gap-10">
-      <img
-        src={product.image}
-        alt={product.imageAlt}
-        width={800}
-        height={600}
-        className="aspect-4/3 w-full rounded-card border border-line object-cover"
-      />
+      <ProductGallery product={product} />
       <div className="space-y-6">
         <div className="space-y-1">
           {product.brand && <p className="text-muted">{product.brand}</p>}
@@ -160,6 +162,10 @@ function ProductView({ product }: { product: Product }) {
               <span className="sr-only"> (se abre en una pestaña nueva)</span>
             </a>
           )}
+          <Button variant="secondary" size="lg" className="w-full md:w-auto" onClick={share}>
+            <Share2 aria-hidden className="size-5" />
+            Compartir
+          </Button>
         </div>
       </div>
 

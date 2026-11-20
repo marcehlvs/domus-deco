@@ -1,5 +1,5 @@
 import { LIMITS, isHexColor, isSafeImageSrc } from "../lib/validate";
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDocs, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { slugify } from "../lib/slug";
 
@@ -18,8 +18,14 @@ export interface Product {
   price: number;
   /** Descuento en porcentaje (1 a 90). Sin valor = sin descuento. */
   discount?: number;
+  /** Foto principal: la del listado, el carrito y las vistas previas al compartir. */
   image: string;
   imageAlt: string;
+  /**
+   * Cuántas fotos extra tiene (además de `image`). Viven aparte, en products/{id}/photos, para que el listado de la tienda
+   * no cargue 5 fotos por producto: solo la ficha y el panel las piden (ver `fetchExtraPhotos`).
+   */
+  extraPhotos?: number;
   description: string;
   sizes: string[];
   colors: Swatch[];
@@ -40,6 +46,8 @@ export interface Product {
 }
 
 export const LOW_STOCK = 3;
+/** Fotos extra por producto (con la principal son 5). */
+export const MAX_EXTRA_PHOTOS = 4;
 
 // ---------- Descuento ----------
 export const hasDiscount = (p: Pick<Product, "discount">) => p.discount !== undefined && p.discount > 0;
@@ -128,9 +136,15 @@ interface Backend {
   save(product: Product): Promise<void>;
   setActive(id: string, active: boolean): Promise<void>;
   remove(id: string): Promise<void>;
+  /** Fotos extra del producto, en orden. */
+  photos(id: string): Promise<string[]>;
+  /** Reemplaza todas las fotos extra del producto por esta lista. */
+  savePhotos(id: string, photos: string[]): Promise<void>;
 }
 
 export const LEGACY_PRODUCTS_KEY = "domus-products-v1";
+
+const photosKey = (id: string) => `domus-photos-v1:${id}`;
 
 const delay = <T>(value: T) => new Promise<T>((resolve) => setTimeout(() => resolve(value), 350));
 
@@ -156,6 +170,19 @@ const localBackend: Backend = {
   async remove(id) {
     const list = await this.all();
     localStorage.setItem(LEGACY_PRODUCTS_KEY, JSON.stringify(list.filter((p) => p.id !== id)));
+    localStorage.removeItem(photosKey(id));
+  },
+  async photos(id) {
+    try {
+      const raw = localStorage.getItem(photosKey(id));
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  },
+  async savePhotos(id, photos) {
+    if (photos.length) localStorage.setItem(photosKey(id), JSON.stringify(photos));
+    else localStorage.removeItem(photosKey(id));
   },
 };
 
@@ -174,6 +201,7 @@ export function productFromData(id: string, x: Partial<Product>): Product {
     discount: x.discount,
     image: x.image ?? "",
     imageAlt: x.imageAlt ?? "",
+    extraPhotos: x.extraPhotos,
     description: x.description ?? "",
     sizes: x.sizes ?? [],
     colors: x.colors ?? [],
@@ -197,7 +225,24 @@ const firestoreBackend: Backend = {
     await updateDoc(doc(db!, "products", id), { active });
   },
   async remove(id) {
+    await firestoreBackend.savePhotos(id, []); // borrar un documento no borra sus subcolecciones: las fotos se sacan aparte
     await deleteDoc(doc(db!, "products", id));
+  },
+  async photos(id) {
+    const snap = await getDocs(collection(db!, "products", id, "photos"));
+    return snap.docs
+      .sort((a, b) => Number(a.id) - Number(b.id))
+      .map((d) => String(d.data().src ?? ""))
+      .filter(Boolean);
+  },
+  async savePhotos(id, photos) {
+    const batch = writeBatch(db!);
+    for (let n = 1; n <= MAX_EXTRA_PHOTOS; n++) {
+      const ref = doc(db!, "products", id, "photos", String(n));
+      if (photos[n - 1]) batch.set(ref, { src: photos[n - 1] });
+      else batch.delete(ref);
+    }
+    await batch.commit();
   },
 };
 
@@ -229,10 +274,12 @@ export const fetchProducts = async (category?: string) =>
   (await cached()).filter((p) => isVisible(p) && (!category || p.category === category));
 /** Catálogo visible sin pasar por la copia de 30 segundos: para confirmar el stock justo antes de crear un pedido. */
 export const fetchProductsFresh = async () => (await fresh()).filter(isVisible);
+/** Fotos extra de un producto (sin la principal). No se piden en el listado: solo la ficha y el panel. */
+export const fetchExtraPhotos = async (p: Pick<Product, "id" | "extraPhotos">) => (p.extraPhotos ? await backend.photos(p.id) : []);
 export const fetchProduct = async (slug: string) => (await cached()).find((p) => p.slug === slug && isVisible(p)) ?? null;
 
 // ---------- Administración ----------
-export type ProductInput = Omit<Product, "id" | "slug" | "custom">;
+export type ProductInput = Omit<Product, "id" | "slug" | "custom" | "extraPhotos">;
 
 export const fetchAdminProducts = async () => await fresh();
 export const fetchAdminProduct = async (id: string) => (await fresh()).find((p) => p.id === id) ?? null;
@@ -261,13 +308,29 @@ function assertValid(p: ProductInput) {
   if (!ok) throw new Error("invalid-product");
 }
 
-export async function saveProduct(input: ProductInput, id?: string): Promise<Product> {
+// Las fotos extra: hasta MAX_EXTRA_PHOTOS, cada una subida desde el equipo o un link https.
+function assertPhotos(photos: string[]) {
+  if (photos.length > MAX_EXTRA_PHOTOS || !photos.every(isSafeImageSrc)) throw new Error("invalid-photos");
+}
+
+/** `photos` = fotos extra: si se pasa, reemplaza a las que tenía; si no, se dejan como están. */
+export async function saveProduct(input: ProductInput, id?: string, photos?: string[]): Promise<Product> {
   assertValid(input);
+  if (photos) assertPhotos(photos);
   const all = await fresh();
   if (id) {
     const current = all.find((p) => p.id === id);
     if (!current) throw new Error("not-found");
-    const updated: Product = { ...current, ...input, id: current.id, slug: current.slug, custom: true };
+    // Primero las fotos y después el producto: así el producto nunca apunta a fotos que no se guardaron.
+    if (photos) await backend.savePhotos(current.id, photos);
+    const updated: Product = {
+      ...current,
+      ...input,
+      extraPhotos: photos ? photos.length || undefined : current.extraPhotos,
+      id: current.id,
+      slug: current.slug,
+      custom: true,
+    };
     await backend.save(updated);
     cache = null;
     return updated;
@@ -276,7 +339,8 @@ export async function saveProduct(input: ProductInput, id?: string): Promise<Pro
   const base = slugify(input.name) || "producto";
   let slug = base;
   for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
-  const created: Product = { ...input, id: slug, slug, custom: true };
+  const created: Product = { ...input, extraPhotos: photos?.length || undefined, id: slug, slug, custom: true };
+  if (photos?.length) await backend.savePhotos(slug, photos);
   await backend.save(created);
   cache = null;
   return created;
@@ -296,6 +360,8 @@ export async function removeProduct(id: string) {
 export async function importProduct(p: Product) {
   const { id: _id, slug: _slug, custom: _custom, ...input } = p;
   assertValid(input);
+  // Si el producto cargado en el navegador tenía fotos extra, se suben con él.
+  if (p.extraPhotos) await backend.savePhotos(p.id, await localBackend.photos(p.id));
   await backend.save({ ...p, custom: true });
   cache = null;
 }

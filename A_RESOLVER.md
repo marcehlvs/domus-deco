@@ -23,11 +23,15 @@ Lista viva de lo que falta para que Domus Deco venda de verdad. Regla: **no se c
 
 Nada de esto pude probarlo contra tu Firebase real. La lógica de stock está probada con casos de ejemplo y el proyecto compila, pero las reglas y las transacciones solo se prueban en tu proyecto.
 
-- [ ] **Publicar las reglas nuevas (de nuevo, ahora incluyen el campo `discount`; sin eso no se puede guardar un producto con descuento):** copiá `firestore.rules` a Firestore → Reglas → Publicar (o `firebase deploy --only firestore:rules`). Sin esto, el checkout falla.
+- [ ] **Publicar las reglas nuevas (de nuevo, ahora incluyen `discount` y las fotos extra `products/{id}/photos`; sin eso no se puede guardar un producto con descuento ni con fotos extra):** copiá `firestore.rules` a Firestore → Reglas → Publicar (o `firebase deploy --only firestore:rules`). Sin esto, el checkout falla.
 - [ ] **Hacer un pedido de prueba** con una cuenta común (no la de admin): ¿se crea?, ¿aparece en «Mis pedidos»?, ¿el número arranca en 1? Si falla con «permission-denied», avisame con el texto del error: lo más probable es un ajuste en la regla del contador.
 - [ ] **Probar el stock de punta a punta** con un producto de prueba: cargá stock por medida y color → pedido → en `/admin/pedidos` pasalo a «Pagado» (el stock baja) → pasalo a «Cancelado» (el stock vuelve).
 - [ ] **Probar en el celular** (375 px): el checkout, la grilla de stock del formulario y la ficha con medidas agotadas.
 - [ ] **Repartir el stock de los productos que ya cargaste** (hoy tienen un solo número): editar cada uno y completar la grilla.
+- [ ] **Probar las fotos extra:** en `/admin/productos`, editá un producto, subí 2 o 3 fotos en «Más fotos» y guardá; abrí su ficha (¿se ve el carrusel y se desliza en el celular?); volvé a editarlo: ¿siguen las fotos?; probá «Hacer principal» y «Quitar». Si al guardar falla con `permission-denied`, falta publicar las reglas.
+- [ ] **Probar las vistas previas** (después de `npm run build` y `firebase deploy --only hosting`): pegá el link de un producto en el depurador de Facebook (<https://developers.facebook.com/tools/debug/>; WhatsApp e Instagram leen las mismas etiquetas) y mirá que salgan foto, nombre y precio. Si no sale, avisame qué dice la consola del build (`[prerender]`). WhatsApp guarda las vistas previas un tiempo: probá con un producto que no hayas pegado antes.
+- [ ] **Probar «Compartir» en el celular** (hace falta el sitio publicado con https): en un producto, tocá «Compartir» y elegí WhatsApp.
+- [ ] **Si activás «Hacer cumplir» (Enforce) de App Check en Firestore** (SEGURIDAD.md, punto 1), el build ya no puede leer los productos y las vistas previas por producto dejan de generarse (el sitio sigue funcionando). Avisame antes de activarlo: se resuelve con una Cloud Function (plan Blaze).
 - [ ] Borrar los pedidos de prueba desde la consola de Firebase cuando termines.
 
 ---
@@ -42,8 +46,11 @@ Nada de esto pude probarlo contra tu Firebase real. La lógica de stock está pr
 ## Para vender mejor
 
 - [ ] **5. Navidad.** Hecho en el código (`src/components/store/ChristmasBanner.tsx`). **Falta de tu parte:** crear la categoría «Navidad» en `/admin/categorias`, cargar productos en ella y completar `lastOrderDate` en `src/data/store.ts` (último día para pedir y recibir a tiempo). La sección aparece sola y se oculta el 25/12.
-- [ ] **6. Que se vea bien al compartir.** Al pasar un producto por WhatsApp o Instagram, que salga con foto, nombre y precio; título y descripción para Google.
-- [ ] **7. Varias fotos por producto.** Sin plan Blaze las fotos van dentro del documento del producto y limitan cuántas caben. Ver si conviene esperar a Blaze (que se necesita para Mercado Pago).
+- [x] **6. Que se vea bien al compartir.** Hecho en tres partes (probarlo: ver «Probar antes de publicar»):
+  - **Vista previa del link** (foto, nombre y precio al pegar un producto en WhatsApp o Instagram). Al hacer `npm run build`, el script `scripts/prerender.mjs` lee los productos de Firestore y crea una página por producto con sus datos en el `<head>` (`dist/producto/<slug>.html`), la foto como archivo (`dist/og/`), el `sitemap.xml` y el `robots.txt`. Para el resto de las páginas queda una vista previa general con el logo (`public/og-default.jpg`). **Límite:** se genera al publicar; si cargás o cambiás un producto, su vista previa se actualiza en el próximo `npm run build` + `firebase deploy --only hosting`. Con el plan Blaze se puede reemplazar por una Cloud Function que lo haga al momento.
+  - **Botón «Compartir» en cada producto.** En el celular abre el menú de compartir con la foto, el nombre, el precio y el link; en la computadora copia el link. Código: `src/lib/share.ts`.
+  - **Título y descripción para Google.** Cada producto tiene su título y descripción (en la pestaña y en el HTML publicado), más datos estructurados de producto (precio, disponibilidad) para que Google pueda mostrarlo con precio. Código: `src/lib/pageMeta.ts` y `scripts/prerender.mjs`.
+- [x] **7. Varias fotos por producto.** Cada producto puede tener la foto principal más **hasta 4 fotos extra** (5 en total). En el formulario, bloque «Más fotos»: se eligen varias de una vez, se pueden quitar y «Hacer principal» intercambia una extra con la principal. En la ficha hay carrusel (se desliza con el dedo, con flechas, miniaturas y teclado). Cada foto se achica a 900 px y, si pesa de más, se comprime otro poco hasta entrar. **Cómo se guardan:** las extras viven en una subcolección aparte (`products/{id}/photos/1…4`) y el producto solo guarda cuántas tiene (`extraPhotos`); así el listado de la tienda sigue cargando una sola foto por producto y la ficha pide las extras al abrirse. La principal es la del listado, el carrito y las vistas previas al compartir. Código: `src/components/product/ProductGallery.tsx`, `src/data/products.ts` (`fetchExtraPhotos`, `saveProduct`) y `src/pages/admin/ProductForm.tsx`. **Cuando tengas plan Blaze:** conviene pasar las fotos a Firebase Storage (más fotos, más grandes, sin tocar el límite de Firestore); queda anotado.
 
 ## Para después
 

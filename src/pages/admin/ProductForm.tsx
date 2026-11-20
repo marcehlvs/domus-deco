@@ -7,7 +7,7 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
 import { Textarea } from "../../components/ui/Textarea";
-import { fetchAdminProduct, finalPrice, saveProduct, totalStock, variantKey, type Product } from "../../data/products";
+import { MAX_EXTRA_PHOTOS, fetchAdminProduct, fetchExtraPhotos, finalPrice, saveProduct, totalStock, variantKey, type Product } from "../../data/products";
 import { ColorDot } from "../../components/ui/ColorDot";
 import { formatPrice } from "../../lib/format";
 import { fileToDataUrl } from "../../lib/image";
@@ -31,12 +31,14 @@ interface FormState {
   legacyStock?: number;
   description: string;
   image: string;
+  /** Fotos extra (además de la principal), en orden. Subidas desde el equipo o links https. */
+  extras: string[];
   imageAlt: string;
   sizes: string;
   colors: { name: string; hex: string }[];
   active: boolean;
 }
-type Errors = Partial<Record<"name" | "price" | "discount" | "stock" | "image" | "sizes" | "colors", string>>;
+type Errors = Partial<Record<"name" | "price" | "discount" | "stock" | "image" | "extras" | "sizes" | "colors", string>>;
 
 const empty: FormState = {
   name: "",
@@ -48,13 +50,14 @@ const empty: FormState = {
   stockBy: {},
   description: "",
   image: "",
+  extras: [],
   imageAlt: "",
   sizes: "",
   colors: [],
   active: true,
 };
 
-const fromProduct = (p: Product): FormState => ({
+const fromProduct = (p: Product, extras: string[]): FormState => ({
   name: p.name,
   brand: p.brand,
   category: p.category,
@@ -65,6 +68,7 @@ const fromProduct = (p: Product): FormState => ({
   legacyStock: p.stockBy === undefined ? p.stock : undefined,
   description: p.description,
   image: p.image,
+  extras,
   imageAlt: p.imageAlt,
   sizes: p.sizes.join(", "),
   colors: p.colors.map((c) => ({ ...c })),
@@ -92,6 +96,7 @@ function validate(f: FormState): Errors {
   if (f.trackStock && combos(f).some((c) => !validUnits(f.stockBy[c.key]))) e.stock = "Revisá el stock: tienen que ser números enteros, 0 o más.";
   if (!f.image) e.image = "Agregá una foto: subila o pegá su dirección.";
   else if (!isSafeImageSrc(f.image)) e.image = "La dirección tiene que empezar con https:// (o subí la foto desde tu equipo).";
+  if (f.extras.length > MAX_EXTRA_PHOTOS || f.extras.some((x) => !isSafeImageSrc(x))) e.extras = `Hasta ${MAX_EXTRA_PHOTOS} fotos más, subidas desde tu equipo o con una dirección https://.`;
   const sizes = parseSizes(f.sizes);
   if (sizes.length === 0) e.sizes = "Agregá al menos una medida.";
   else if (sizes.length > LIMITS.sizes || sizes.some((s) => s.length > LIMITS.size)) e.sizes = `Hasta ${LIMITS.sizes} medidas de ${LIMITS.size} letras como máximo.`;
@@ -102,7 +107,12 @@ function validate(f: FormState): Errors {
 
 export default function ProductForm() {
   const { id } = useParams();
-  const { state, retry } = useAsync(() => (id ? fetchAdminProduct(id) : Promise.resolve(undefined)), [id]);
+  // Las fotos extra viven aparte del producto: se piden junto con él.
+  const { state, retry } = useAsync(async () => {
+    if (!id) return undefined;
+    const product = await fetchAdminProduct(id);
+    return product ? { product, extras: await fetchExtraPhotos(product) } : null;
+  }, [id]);
 
   const back = (
     <Link to="/admin/productos" className="inline-flex min-h-11 items-center gap-2 rounded-control text-muted hover:text-ink">
@@ -130,7 +140,7 @@ export default function ProductForm() {
       </div>
     );
 
-  if (id && (!state.data || !state.data.custom))
+  if (id && (!state.data || !state.data.product.custom))
     return (
       <div className="space-y-4">
         {back}
@@ -146,7 +156,7 @@ export default function ProductForm() {
   return (
     <div className="space-y-4">
       {back}
-      <Editor id={id} initial={state.data ? fromProduct(state.data) : { ...empty, category: useCategories.getState().list[0]?.slug ?? "" }} />
+      <Editor id={id} initial={state.data ? fromProduct(state.data.product, state.data.extras) : { ...empty, category: useCategories.getState().list[0]?.slug ?? "" }} />
     </div>
   );
 }
@@ -156,6 +166,7 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
   const show = useToast((s) => s.show);
   const formRef = useRef<HTMLFormElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const extraRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<FormState>(initial);
   const categories = useCategories((s) => s.list);
   const [errors, setErrors] = useState<Errors>({});
@@ -164,6 +175,8 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
   const [failed, setFailed] = useState(false);
   const [imgBusy, setImgBusy] = useState(false);
   const [imgError, setImgError] = useState("");
+  const [extraBusy, setExtraBusy] = useState(false);
+  const [extraError, setExtraError] = useState("");
 
   // Tras el primer intento de guardar, los avisos se actualizan mientras se escribe.
   useEffect(() => {
@@ -184,6 +197,33 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
       setImgBusy(false);
     }
   };
+
+  const onExtraFiles = async (list: FileList | null) => {
+    const files = Array.from(list ?? []);
+    if (extraRef.current) extraRef.current.value = ""; // permite elegir de nuevo el mismo archivo
+    if (files.length === 0) return;
+    const room = MAX_EXTRA_PHOTOS - form.extras.length;
+    setExtraBusy(true);
+    setExtraError(files.length > room ? `Entran ${room} más: se tomaron las primeras ${room}.` : "");
+    const added: string[] = [];
+    try {
+      for (const file of files.slice(0, room)) added.push(await fileToDataUrl(file));
+    } catch {
+      setExtraError("No pudimos leer alguna de esas imágenes. Probá con otras (JPG o PNG).");
+    } finally {
+      if (added.length) setForm((f) => ({ ...f, extras: [...f.extras, ...added].slice(0, MAX_EXTRA_PHOTOS) }));
+      setExtraBusy(false);
+    }
+  };
+  const removeExtra = (i: number) => setForm((f) => ({ ...f, extras: f.extras.filter((_, k) => k !== i) }));
+  // La extra pasa a ser la principal y la principal ocupa su lugar.
+  const makeMain = (i: number) =>
+    setForm((f) => {
+      const next = [...f.extras];
+      if (f.image) next[i] = f.image;
+      else next.splice(i, 1); // sin principal todavía: la extra simplemente sube de lugar
+      return { ...f, image: f.extras[i], extras: next };
+    });
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -215,6 +255,7 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
           active: form.active,
         },
         id,
+        form.extras,
       );
       show(id ? "Producto actualizado" : "Producto creado");
       navigate("/admin/productos");
@@ -251,8 +292,42 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
               {imgError}
             </p>
           )}
-          <Input label="O pegá la dirección de la imagen" type="url" inputMode="url" placeholder="https://…" value={urlValue} error={errors.image} onChange={(e) => set("image", e.target.value.trim())} />
+          <Input label="O pegá la dirección de la foto principal" type="url" inputMode="url" placeholder="https://…" value={urlValue} error={errors.image} onChange={(e) => set("image", e.target.value.trim())} />
           <Input label="Descripción de la foto" maxLength={LIMITS.imageAlt} hint="Para personas que no la ven. Si la dejás vacía se usa el nombre." value={form.imageAlt} onChange={(e) => set("imageAlt", e.target.value)} />
+
+          <div className="space-y-3 border-t border-line pt-4">
+            <p className="text-sm font-medium">
+              Más fotos ({form.extras.length} de {MAX_EXTRA_PHOTOS})
+            </p>
+            <p className="text-sm text-muted">Se ven en la ficha del producto. La principal es la que aparece en la tienda y al compartir.</p>
+            {form.extras.length > 0 && (
+              <ul className="grid grid-cols-2 gap-3 md:grid-cols-1">
+                {form.extras.map((src, i) => (
+                  <li key={i} className="space-y-2">
+                    <img src={src} alt={`Foto extra ${i + 1}`} className="aspect-4/3 w-full rounded-control border border-line object-cover" />
+                    <div className="flex flex-col gap-1">
+                      <Button variant="secondary" aria-label={`Usar la foto extra ${i + 1} como principal`} onClick={() => makeMain(i)}>
+                        Hacer principal
+                      </Button>
+                      <Button variant="danger" aria-label={`Quitar la foto extra ${i + 1}`} onClick={() => removeExtra(i)}>
+                        Quitar
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <input ref={extraRef} type="file" accept="image/*" multiple className="sr-only" tabIndex={-1} aria-label="Elegir archivos de fotos extra" onChange={(e) => void onExtraFiles(e.target.files)} />
+            <Button variant="secondary" className="w-full" loading={extraBusy} disabled={form.extras.length >= MAX_EXTRA_PHOTOS} onClick={() => extraRef.current?.click()}>
+              <ImagePlus aria-hidden className="size-4" />
+              {form.extras.length >= MAX_EXTRA_PHOTOS ? "Llegaste al máximo" : "Agregar fotos"}
+            </Button>
+            {(extraError || errors.extras) && (
+              <p role="alert" className="text-sm text-danger">
+                {extraError || errors.extras}
+              </p>
+            )}
+          </div>
         </fieldset>
 
         <div className="space-y-5">

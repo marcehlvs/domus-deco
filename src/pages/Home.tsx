@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { ProductCard, productGrid } from "../components/product/ProductCard";
+import { ChristmasBanner } from "../components/store/ChristmasBanner";
 import { Perks } from "../components/store/Perks";
 import { Button, LinkButton } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -85,6 +86,8 @@ export default function Home() {
           </LinkButton>
         </div>
       </section>
+
+      <ChristmasBanner />
 
       <section aria-labelledby="categorias" className="space-y-5">
         <h2 id="categorias" className="text-2xl md:text-3xl">

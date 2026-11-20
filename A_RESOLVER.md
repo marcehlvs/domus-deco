@@ -32,13 +32,13 @@ Nada de esto pude probarlo contra tu Firebase real. La lógica de stock está pr
 ## Antes de cobrar (lo que falta)
 
 - [ ] **4. Textos legales.** Están ocultos mientras `reviewed` sea `false` en `src/data/legal.ts`. Completar tus datos como proveedora, los de Defensa del Consumidor y el **botón de arrepentimiento** (creo que es obligatorio para ventas online en Argentina: confirmalo con tu contador o con quien te asesore antes de publicar).
-- [ ] **Texto de Pagos en el Home** (`src/data/perks.ts`): dice «Pagá online con Mercado Pago», pero hoy el pago se coordina por WhatsApp. Cambiarlo por lo que de verdad ofrecés (transferencia, efectivo…) hasta que esté Mercado Pago.
+- [x] **Texto de Pagos en el Home** (`src/data/perks.ts`): ahora dice que el pago se acuerda por WhatsApp. Cuando esté Mercado Pago, volver a cambiarlo.
 - [ ] **Medios de pago a coordinar:** definir qué le decís a quien pide (alias/CBU, descuento por transferencia, etc.) para tenerlo escrito en un mismo lugar.
 - [ ] **Deploy en Firebase Hosting** (paso 7 del README).
 
 ## Para vender mejor
 
-- [ ] **5. Navidad.** Categoría «Navidad» destacada en la portada, con aviso de hasta cuándo se entrega a tiempo. Es lo próximo.
+- [ ] **5. Navidad.** Hecho en el código (`src/components/store/ChristmasBanner.tsx`). **Falta de tu parte:** crear la categoría «Navidad» en `/admin/categorias`, cargar productos en ella y completar `lastOrderDate` en `src/data/store.ts` (último día para pedir y recibir a tiempo). La sección aparece sola y se oculta el 25/12.
 - [ ] **6. Que se vea bien al compartir.** Al pasar un producto por WhatsApp o Instagram, que salga con foto, nombre y precio; título y descripción para Google.
 - [ ] **7. Varias fotos por producto.** Sin plan Blaze las fotos van dentro del documento del producto y limitan cuántas caben. Ver si conviene esperar a Blaze (que se necesita para Mercado Pago).
 

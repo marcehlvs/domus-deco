@@ -1,5 +1,3 @@
-import quiltImg from "../assets/products/cover-quilt-cacharel.jpg";
-import towelImg from "../assets/products/toallon-city-blanco.jpg";
 import { LIMITS, isHexColor, isSafeImageSrc } from "../lib/validate";
 import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
@@ -34,57 +32,11 @@ export const LOW_STOCK = 3;
 export const isSoldOut = (p: Product) => p.stock !== undefined && p.stock <= 0;
 export const isLowStock = (p: Product) => p.stock !== undefined && p.stock > 0 && p.stock <= LOW_STOCK;
 
-// Productos de muestra. Los productos reales se cargan desde /admin/productos.
-const seedProducts: Product[] = [
-  {
-    id: "cacharel-cover-quilt",
-    slug: "cover-quilt-doble-faz-cacharel",
-    name: "Cover quilt doble faz con funda",
-    brand: "Cacharel",
-    category: "acolchados",
-    price: 39900,
-    image: quiltImg,
-    imageAlt: "Cover quilt doble faz Cacharel enrollados en verde agua, gris lavanda, arena, verde petróleo y azul marino",
-    description: "Doble faz y con funda incluida.",
-    sizes: ["2 1/2 plazas (Queen)"],
-    colors: [
-      { name: "Verde agua", hex: "#9fc3b0" },
-      { name: "Gris lavanda", hex: "#a9b1cc" },
-      { name: "Arena", hex: "#e3d3a4" },
-      { name: "Verde petróleo", hex: "#0f5f63" },
-      { name: "Azul marino", hex: "#2f3a74" },
-    ],
-  },
-  {
-    id: "city-blanco-toallon",
-    slug: "toallon-secado-rapido-city-blanco",
-    name: "Toallón de secado rápido 70 x 150",
-    brand: "City Blanco",
-    category: "toallas",
-    price: 9000,
-    image: towelImg,
-    imageAlt: "Toallones de secado rápido City Blanco enrollados en una canasta, en varios colores",
-    description: "Toallón de secado rápido, de 70 x 150 cm.",
-    sizes: ["70 x 150 cm"],
-    colors: [
-      { name: "Turquesa", hex: "#2fbfae" },
-      { name: "Fucsia", hex: "#c2377f" },
-      { name: "Azul marino", hex: "#1d3a7a" },
-      { name: "Violeta", hex: "#6b3f8f" },
-      { name: "Azul", hex: "#2f7bd6" },
-      { name: "Gris", hex: "#8a8f98" },
-      { name: "Naranja", hex: "#f08a24" },
-      { name: "Rojo", hex: "#c62828" },
-      { name: "Bordó", hex: "#7a1f2b" },
-    ],
-  },
-];
-
 // ---------- Dónde se guardan los productos ----------
 // Con Firebase configurado (.env.local) viven en Firestore y los ve cualquier cliente.
 // Sin Firebase (por ejemplo, el primer día en tu computadora) se guardan en este navegador: modo demostración.
 interface Backend {
-  /** Todos los productos propios (visibles y ocultos), sin los de muestra. */
+  /** Todos los productos (visibles y ocultos). */
   all(): Promise<Product[]>;
   save(product: Product): Promise<void>;
   setActive(id: string, active: boolean): Promise<void>;
@@ -180,19 +132,17 @@ const fresh = () => {
   return cached();
 };
 
-// Mientras no cargaste ningún producto propio, la tienda muestra los de muestra para no quedar vacía.
-const withSeeds = (list: Product[]) => (list.length ? list : seedProducts);
 const isVisible = (p: Product) => p.active !== false;
 
 // ---------- Tienda ----------
 export const fetchProducts = async (category?: string) =>
-  withSeeds(await cached()).filter((p) => isVisible(p) && (!category || p.category === category));
-export const fetchProduct = async (slug: string) => withSeeds(await cached()).find((p) => p.slug === slug && isVisible(p)) ?? null;
+  (await cached()).filter((p) => isVisible(p) && (!category || p.category === category));
+export const fetchProduct = async (slug: string) => (await cached()).find((p) => p.slug === slug && isVisible(p)) ?? null;
 
 // ---------- Administración ----------
 export type ProductInput = Omit<Product, "id" | "slug" | "custom">;
 
-export const fetchAdminProducts = async () => withSeeds(await fresh());
+export const fetchAdminProducts = async () => await fresh();
 export const fetchAdminProduct = async (id: string) => (await fresh()).find((p) => p.id === id) ?? null;
 
 /** Cuántos productos hay en cada categoría: para no borrar una que está en uso. */
@@ -228,7 +178,7 @@ export async function saveProduct(input: ProductInput, id?: string): Promise<Pro
     cache = null;
     return updated;
   }
-  const taken = new Set([...seedProducts, ...all].flatMap((p) => [p.id, p.slug]));
+  const taken = new Set(all.flatMap((p) => [p.id, p.slug]));
   const base = slugify(input.name) || "producto";
   let slug = base;
   for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;

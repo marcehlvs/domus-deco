@@ -25,7 +25,7 @@ Ecommerce de blanquería. React + Vite + TypeScript + Tailwind v4, con Firebase 
 **Por tener en cuenta**
 
 - `/admin` pide ingresar con una cuenta cuyo UID esté en la colección `admins` (ver «Quién es administrador»). Solo si no hay Firebase configurado (sin `.env.local`) abre sin ingresar, y únicamente con `npm run dev`.
-- Mientras no cargues ningún producto, la tienda muestra 2 productos de muestra (los del código) para no quedar vacía; al cargar el primero propio, desaparecen. Los **pedidos** del panel todavía son de demostración (`localStorage`), hasta el paso 6.
+- Ya no hay productos de muestra: mientras no cargues ninguno, la tienda muestra el aviso de catálogo vacío y el Home oculta los destacados. Los **colores** de cada producto se eligen tocando la paleta (`src/data/swatches.ts`; para sumar un color, agregá una línea ahí) y «Otro color» queda para casos raros. Los **pedidos** del panel todavía son de demostración (`localStorage`), hasta el paso 6.
 - **Cambiar el video de la intro**: reemplazá `public/media/domus-deco-hero.mp4` (y el póster `domus-deco-poster.webp`, el primer cuadro). Si el navegador tiene «reducir movimiento», la intro muestra solo el póster. Para volver a verla: abrí la tienda en una pestaña nueva.
 - Redes sociales y contacto del pie: se cargan en `src/data/store.ts` (los campos vacíos no se muestran). Los textos de envíos / cambios / pagos del Home están aparte, en `src/data/perks.ts`: no los borres de ahí, el Home los lee.
 - **Antes de publicar**: completá y revisá los textos de `src/data/legal.ts` (ver «Textos legales»). Mientras `reviewed` sea `false`, esas páginas y sus links no aparecen en la tienda publicada.

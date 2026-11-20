@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ImagePlus, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ImagePlus } from "lucide-react";
+import { ColorPalette } from "../../components/admin/ColorPalette";
 import { Button, LinkButton } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
@@ -39,7 +40,7 @@ const empty: FormState = {
   image: "",
   imageAlt: "",
   sizes: "",
-  colors: [{ name: "", hex: "#cccccc" }],
+  colors: [],
   active: true,
 };
 
@@ -71,7 +72,7 @@ function validate(f: FormState): Errors {
   const sizes = parseSizes(f.sizes);
   if (sizes.length === 0) e.sizes = "Agregá al menos una medida.";
   else if (sizes.length > LIMITS.sizes || sizes.some((s) => s.length > LIMITS.size)) e.sizes = `Hasta ${LIMITS.sizes} medidas de ${LIMITS.size} letras como máximo.`;
-  if (!f.colors.some((c) => c.name.trim())) e.colors = "Agregá al menos un color con nombre.";
+  if (!f.colors.some((c) => c.name.trim())) e.colors = "Elegí al menos un color de la paleta.";
   else if (f.colors.length > LIMITS.colors || f.colors.some((c) => c.name.length > LIMITS.color || !isHexColor(c.hex))) e.colors = "Revisá los colores: nombres cortos y un tono válido.";
   return e;
 }
@@ -147,8 +148,6 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
   }, [form, submitted]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
-  const setColor = (i: number, patch: Partial<FormState["colors"][number]>) =>
-    set("colors", form.colors.map((c, j) => (j === i ? { ...c, ...patch } : c)));
 
   const onFile = async (file?: File) => {
     if (!file) return;
@@ -282,31 +281,7 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
             autoComplete="off"
           />
 
-          <fieldset className="space-y-3">
-            <legend className="text-sm font-medium">Colores</legend>
-            {form.colors.map((c, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <div className="min-w-0 flex-1">
-                  <Input label={`Nombre del color ${i + 1}`} maxLength={LIMITS.color} value={c.name} error={i === 0 ? errors.colors : undefined} onChange={(e) => setColor(i, { name: e.target.value })} autoComplete="off" />
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor={`hex-${i}`} className="block text-sm font-medium">
-                    Tono
-                  </label>
-                  <input id={`hex-${i}`} type="color" value={c.hex} onChange={(e) => setColor(i, { hex: e.target.value })} className="h-11 w-14 cursor-pointer rounded-control border border-line bg-surface p-1" />
-                </div>
-                <div className="pt-[1.625rem]">
-                  <Button variant="ghost" disabled={form.colors.length === 1} aria-label={`Quitar color ${i + 1}`} onClick={() => set("colors", form.colors.filter((_, j) => j !== i))}>
-                    <Trash2 aria-hidden className="size-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-            <Button variant="secondary" onClick={() => set("colors", [...form.colors, { name: "", hex: "#cccccc" }])}>
-              <Plus aria-hidden className="size-4" />
-              Agregar color
-            </Button>
-          </fieldset>
+          <ColorPalette value={form.colors} onChange={(next) => set("colors", next)} error={errors.colors} />
 
           <label className="flex min-h-11 cursor-pointer items-center gap-3">
             <input type="checkbox" checked={form.active} onChange={(e) => set("active", e.target.checked)} className="size-5 accent-primary" />

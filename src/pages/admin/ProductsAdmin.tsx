@@ -21,13 +21,13 @@ export default function ProductsAdmin() {
   const [exporting, setExporting] = useState(false);
   const [exportFailed, setExportFailed] = useState(false);
 
-  const customProducts = state.status === "success" ? state.data.filter((p) => p.custom) : [];
+  const products = state.status === "success" ? state.data : [];
 
   const exportStock = async () => {
     setExporting(true);
     setExportFailed(false);
     try {
-      await downloadStockSheet(customProducts);
+      await downloadStockSheet(products);
       show("Planilla descargada");
     } catch {
       setExportFailed(true);
@@ -59,8 +59,8 @@ export default function ProductsAdmin() {
           <Button
             variant="secondary"
             loading={exporting}
-            disabled={customProducts.length === 0}
-            title={customProducts.length === 0 ? "Cargá al menos un producto para descargar la planilla" : undefined}
+            disabled={products.length === 0}
+            title={products.length === 0 ? "Cargá al menos un producto para descargar la planilla" : undefined}
             onClick={exportStock}
           >
             {!exporting && <Download aria-hidden className="size-4" />}
@@ -109,15 +109,15 @@ export default function ProductsAdmin() {
 
       {state.status === "success" && (
         <>
-          {!state.data.some((p) => p.custom) && (
+          {state.data.length === 0 && (
             <StatePanel
               variant="empty"
               title="Todavía no cargaste productos"
-              description="Los de abajo son de muestra. Creá el primero con «Nuevo producto»."
+              description="Creá el primero con «Nuevo producto»."
               className="py-8"
             />
           )}
-          <ul className="divide-y divide-line border-y border-line">
+          <ul className="divide-y divide-line border-y border-line empty:hidden">
             {state.data.map((p) => (
               <li key={p.id} className="grid grid-cols-[4.5rem_1fr] gap-x-4 gap-y-3 py-4 md:grid-cols-[4.5rem_1fr_auto] md:items-center">
                 <img src={p.image} alt="" width={72} height={72} className="size-18 rounded-control border border-line object-cover" />
@@ -127,7 +127,6 @@ export default function ProductsAdmin() {
                     {[p.brand, categoryName(p.category)].filter(Boolean).join(" · ")} · <span className="font-bold text-ink">{formatPrice(p.price)}</span>
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {!p.custom && <Badge>De muestra</Badge>}
                     {p.active === false ? <Badge tone="warning">Oculto en la tienda</Badge> : <Badge tone="success">Visible</Badge>}
                     {isSoldOut(p) ? (
                       <Badge tone="danger">Sin stock</Badge>
@@ -139,29 +138,23 @@ export default function ProductsAdmin() {
                   </div>
                 </div>
                 <div className="col-span-2 flex flex-wrap gap-2 md:col-span-1 md:justify-end">
-                  {p.custom ? (
-                    <>
-                      <LinkButton to={`/admin/productos/${p.id}`} variant="secondary" aria-label={`Editar ${p.name}`}>
-                        <Pencil aria-hidden className="size-4" />
-                        Editar
-                      </LinkButton>
-                      <Button
-                        variant="ghost"
-                        disabled={busy}
-                        aria-label={`${p.active === false ? "Mostrar" : "Ocultar"} ${p.name} en la tienda`}
-                        onClick={() => run(() => setProductActive(p.id, p.active === false), p.active === false ? "Producto visible" : "Producto oculto")}
-                      >
-                        {p.active === false ? <Eye aria-hidden className="size-4" /> : <EyeOff aria-hidden className="size-4" />}
-                        {p.active === false ? "Mostrar" : "Ocultar"}
-                      </Button>
-                      <Button variant="danger" disabled={busy} aria-label={`Eliminar ${p.name}`} onClick={() => setToDelete(p)}>
-                        <Trash2 aria-hidden className="size-4" />
-                        Eliminar
-                      </Button>
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted">Se edita desde el código</p>
-                  )}
+                  <LinkButton to={`/admin/productos/${p.id}`} variant="secondary" aria-label={`Editar ${p.name}`}>
+                    <Pencil aria-hidden className="size-4" />
+                    Editar
+                  </LinkButton>
+                  <Button
+                    variant="ghost"
+                    disabled={busy}
+                    aria-label={`${p.active === false ? "Mostrar" : "Ocultar"} ${p.name} en la tienda`}
+                    onClick={() => run(() => setProductActive(p.id, p.active === false), p.active === false ? "Producto visible" : "Producto oculto")}
+                  >
+                    {p.active === false ? <Eye aria-hidden className="size-4" /> : <EyeOff aria-hidden className="size-4" />}
+                    {p.active === false ? "Mostrar" : "Ocultar"}
+                  </Button>
+                  <Button variant="danger" disabled={busy} aria-label={`Eliminar ${p.name}`} onClick={() => setToDelete(p)}>
+                    <Trash2 aria-hidden className="size-4" />
+                    Eliminar
+                  </Button>
                 </div>
               </li>
             ))}

@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { Badge } from "../ui/Badge";
 import { Card } from "../ui/Card";
-import { formatPrice } from "../../lib/format";
-import { isSoldOut, type Product } from "../../data/products";
+import { hasDiscount, isSoldOut, type Product } from "../../data/products";
+import { Price } from "./Price";
 import { cn } from "../../lib/cn";
 
 // Misma grilla en Tienda y en Destacados del Home.
@@ -27,11 +27,16 @@ export function ProductCard({ product }: { product: Product }) {
               <Badge>Sin stock</Badge>
             </span>
           )}
+          {hasDiscount(product) && (
+            <span aria-hidden className="absolute right-2 top-2">
+              <Badge tone="warning">{product.discount}% OFF</Badge>
+            </span>
+          )}
         </div>
         <div className="space-y-1 p-4">
           {product.brand && <p className="text-sm text-muted">{product.brand}</p>}
           <p className="font-medium leading-snug">{product.name}</p>
-          <p className="pt-1 text-lg font-bold">{formatPrice(product.price)}</p>
+          <Price product={product} className="pt-1" />
         </div>
       </Card>
     </Link>

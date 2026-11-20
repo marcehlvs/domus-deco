@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button, LinkButton } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
-import { claimed, fetchProducts, unitsFor } from "../data/products";
+import { claimed, fetchProducts, finalPrice, unitsFor } from "../data/products";
 import { formatPrice } from "../lib/format";
 import { useAsync } from "../lib/useAsync";
 import { useCart } from "../store/cart";
@@ -66,7 +66,7 @@ export default function Cart() {
     const p = state.data.find((x) => x.id === item.productId);
     return p ? [{ item, p }] : [];
   });
-  const total = lines.reduce((sum, { item, p }) => sum + p.price * item.qty, 0);
+  const total = lines.reduce((sum, { item, p }) => sum + finalPrice(p) * item.qty, 0);
 
   // El tope es por medida y color (o de todo el producto si todavía tiene el stock compartido).
   const limitOf = (item: (typeof items)[number], p: (typeof lines)[number]["p"]) => unitsFor(p, item.size, item.color);
@@ -117,7 +117,7 @@ export default function Cart() {
                   </p>
                 )}
               </div>
-              <p className="font-bold">{formatPrice(p.price * item.qty)}</p>
+              <p className="font-bold">{formatPrice(finalPrice(p) * item.qty)}</p>
             </li>
             );
           })}

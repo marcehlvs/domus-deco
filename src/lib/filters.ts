@@ -1,4 +1,4 @@
-import { isSoldOut, type Product } from "../data/products";
+import { finalPrice, isSoldOut, type Product } from "../data/products";
 import { formatPrice } from "./format";
 
 // Filtros de la tienda. Viven en la dirección (?min=…&max=…&color=…&medida=…&stock=1):
@@ -44,8 +44,8 @@ export function writeFilters(prev: URLSearchParams, f: Filters) {
 }
 
 export const matchesFilters = (p: Product, f: Filters) =>
-  (f.min === undefined || p.price >= f.min) &&
-  (f.max === undefined || p.price <= f.max) &&
+  (f.min === undefined || finalPrice(p) >= f.min) &&
+  (f.max === undefined || finalPrice(p) <= f.max) &&
   (f.colors.length === 0 || p.colors.some((c) => f.colors.includes(c.name))) &&
   (f.sizes.length === 0 || p.sizes.some((s) => f.sizes.includes(s))) &&
   (!f.inStock || !isSoldOut(p));

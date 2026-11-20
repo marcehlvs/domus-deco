@@ -7,7 +7,7 @@ import { Skeleton, StatePanel } from "../components/ui/StatePanel";
 import { Textarea } from "../components/ui/Textarea";
 import { delivery, enabledMethods, type DeliveryMethod } from "../data/delivery";
 import { createOrder, type OrderItem } from "../data/orders";
-import { claimed, fetchProducts, fetchProductsFresh, unitsFor, type Product } from "../data/products";
+import { claimed, fetchProducts, fetchProductsFresh, finalPrice, unitsFor, type Product } from "../data/products";
 import { formatPrice } from "../lib/format";
 import { useAsync } from "../lib/useAsync";
 import { useAuth } from "../store/auth";
@@ -60,7 +60,7 @@ export default function Checkout() {
         : [],
     [state, items],
   );
-  const total = lines.reduce((sum, { item, p }) => sum + p.price * item.qty, 0);
+  const total = lines.reduce((sum, { item, p }) => sum + finalPrice(p) * item.qty, 0);
   const title = <h1 className="text-3xl md:text-4xl">Finalizar compra</h1>;
 
   if (items.length === 0)
@@ -124,7 +124,7 @@ export default function Checkout() {
       }
       const orderItems: OrderItem[] = items.map((item) => {
         const p = catalog.find((x) => x.id === item.productId)!;
-        return { productId: p.id, name: p.name, size: item.size, color: item.color, qty: item.qty, price: p.price };
+        return { productId: p.id, name: p.name, size: item.size, color: item.color, qty: item.qty, price: finalPrice(p) };
       });
       const order = await createOrder(
         {
@@ -209,7 +209,7 @@ export default function Checkout() {
                     {item.color} · {item.size}
                   </span>
                 </span>
-                <span className="font-medium">{formatPrice(p.price * item.qty)}</span>
+                <span className="font-medium">{formatPrice(finalPrice(p) * item.qty)}</span>
               </li>
             ))}
           </ul>

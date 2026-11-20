@@ -4,6 +4,7 @@ import { ArrowLeft, MessageCircle, ShoppingBag } from "lucide-react";
 import { Badge } from "../components/ui/Badge";
 import { Button, buttonStyles, LinkButton } from "../components/ui/Button";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
+import { Price } from "../components/product/Price";
 import { LOW_STOCK, fetchProduct, isSoldOut, isVariantSoldOut, unitsFor, type Product } from "../data/products";
 import { formatPrice } from "../lib/format";
 import { useAsync } from "../lib/useAsync";
@@ -97,7 +98,7 @@ function ProductView({ product }: { product: Product }) {
           {product.brand && <p className="text-muted">{product.brand}</p>}
           <h1 className="text-3xl md:text-4xl">{product.name}</h1>
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            <p className="text-2xl font-bold">{formatPrice(product.price)}</p>
+            <Price product={product} size="xl" />
             {soldOut ? <Badge>Sin stock</Badge> : comboSoldOut && <Badge>Sin stock en esta combinación</Badge>}
             {comboLow && <Badge tone="warning">{units === 1 ? "Última unidad" : `Quedan ${units}`}</Badge>}
           </div>
@@ -163,7 +164,7 @@ function ProductView({ product }: { product: Product }) {
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-4 border-t border-line bg-bg/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:hidden">
-        <p className="text-xl font-bold">{formatPrice(product.price)}</p>
+        <Price product={product} size="lg" className="shrink-0" />
         <Button size="lg" className="flex-1" disabled={comboSoldOut} onClick={addToCart}>
           <ShoppingBag aria-hidden className="size-5" />
           {comboSoldOut ? "Sin stock" : "Agregar al carrito"}

@@ -5,9 +5,10 @@ import { ProductCard, productGrid as grid } from "../components/product/ProductC
 import { FiltersModal } from "../components/store/FiltersModal";
 import { Button, LinkButton } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
+import { Pagination } from "../components/ui/Pagination";
 import { Select } from "../components/ui/Select";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
-import { fetchProducts, isSoldOut, type Product } from "../data/products";
+import { fetchProducts, finalPrice, isSoldOut, type Product } from "../data/products";
 import { NO_FILTERS, filterChips, matchesFilters, readFilters, writeFilters, type Filters } from "../lib/filters";
 import { useAsync } from "../lib/useAsync";
 import { useCategories } from "../store/categories";
@@ -19,6 +20,9 @@ const sorts = {
   nombre: "Nombre (A–Z)",
 } as const;
 type SortKey = keyof typeof sorts;
+
+// 12 entra justo en la grilla de 2, 3 y 4 columnas (sin fila incompleta).
+const PAGE_SIZE = 12;
 
 // Sin tildes y en minúsculas, para que «sabana» encuentre «Sábana».
 const norm = (s: string) =>
@@ -33,8 +37,8 @@ function arrange(list: Product[], q: string, sort: SortKey, filters: Filters) {
     const text = norm(`${p.name} ${p.brand} ${p.description}`);
     return terms.every((t) => text.includes(t)) && matchesFilters(p, filters);
   });
-  if (sort === "menor") return [...found].sort((a, b) => a.price - b.price);
-  if (sort === "mayor") return [...found].sort((a, b) => b.price - a.price);
+  if (sort === "menor") return [...found].sort((a, b) => finalPrice(a) - finalPrice(b));
+  if (sort === "mayor") return [...found].sort((a, b) => finalPrice(b) - finalPrice(a));
   if (sort === "nombre") return [...found].sort((a, b) => a.name.localeCompare(b.name, "es"));
   // Por defecto, lo agotado va al final.
   return [...found].sort((a, b) => Number(isSoldOut(a)) - Number(isSoldOut(b)));
@@ -58,17 +62,27 @@ export default function Shop() {
       (prev) => {
         const next = new URLSearchParams(prev);
         Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)));
+        next.delete("pagina"); // cambió la búsqueda o el orden: se vuelve a la primera página
         return next;
       },
       { replace: true },
     );
 
-  const applyFilters = (f: Filters) => setParams((prev) => writeFilters(prev, f), { replace: true });
+  const applyFilters = (f: Filters) =>
+    setParams(
+      (prev) => {
+        const next = writeFilters(prev, f);
+        next.delete("pagina");
+        return next;
+      },
+      { replace: true },
+    );
 
   // Al cambiar de categoría se conservan la búsqueda, el orden y los filtros.
   const categoryLink = (slug?: string) => {
     const next = new URLSearchParams(params);
     next.delete("categoria");
+    next.delete("pagina");
     if (slug) next.set("categoria", slug);
     const qs = next.toString();
     return qs ? `/tienda?${qs}` : "/tienda";
@@ -84,8 +98,8 @@ export default function Shop() {
       for (const p of state.data) {
         p.colors.forEach((c) => colors.has(c.name) || colors.set(c.name, c.hex));
         p.sizes.forEach((x) => sizes.add(x));
-        minPrice = Math.min(minPrice, p.price);
-        maxPrice = Math.max(maxPrice, p.price);
+        minPrice = Math.min(minPrice, finalPrice(p));
+        maxPrice = Math.max(maxPrice, finalPrice(p));
       }
     }
     return {
@@ -97,6 +111,22 @@ export default function Shop() {
   }, [state]);
 
   const shown = useMemo(() => (state.status === "success" ? arrange(state.data, q, sort, filters) : []), [state, q, sort, filters]);
+
+  // La página vive en la dirección (?pagina=2): se puede compartir y «atrás» vuelve a la anterior.
+  const totalPages = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
+  const page = Math.min(Math.max(Number.parseInt(params.get("pagina") ?? "1", 10) || 1, 1), totalPages);
+  const visible = shown.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const goToPage = (n: number) => {
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (n <= 1) next.delete("pagina");
+        else next.set("pagina", String(n));
+        return next;
+      },
+    );
+    window.scrollTo({ top: 0 });
+  };
 
   return (
     <div className="space-y-6">
@@ -213,7 +243,7 @@ export default function Shop() {
       {state.status === "success" && state.data.length > 0 && (
         <>
           <p role="status" className="text-sm text-muted">
-            {shown.length} {shown.length === 1 ? "producto" : "productos"}
+            {totalPages > 1 ? `Mostrando ${(page - 1) * PAGE_SIZE + 1}–${(page - 1) * PAGE_SIZE + visible.length} de ${shown.length} productos` : `${shown.length} ${shown.length === 1 ? "producto" : "productos"}`}
             {q && ` para «${q}»`}
             {chips.length > 0 && " con los filtros elegidos"}
           </p>
@@ -229,6 +259,7 @@ export default function Shop() {
                     setParams((prev) => {
                       const next = writeFilters(prev, NO_FILTERS);
                       next.delete("q");
+                      next.delete("pagina");
                       return next;
                     }, { replace: true })
                   }
@@ -238,11 +269,14 @@ export default function Shop() {
               }
             />
           ) : (
-            <div className={grid}>
-              {shown.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
+            <>
+              <div className={grid}>
+                {visible.map((p) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+              <Pagination page={page} totalPages={totalPages} onChange={goToPage} />
+            </>
           )}
         </>
       )}

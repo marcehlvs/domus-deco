@@ -5,7 +5,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Button, LinkButton } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
-import { fetchAdminProducts, isLowStock, isSoldOut, removeProduct, setProductActive, totalStock, type Product } from "../../data/products";
+import { fetchAdminProducts, finalPrice, hasDiscount, isLowStock, isSoldOut, removeProduct, setProductActive, totalStock, type Product } from "../../data/products";
 import { downloadStockSheet } from "../../lib/downloadStockSheet";
 import { formatPrice } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
@@ -124,7 +124,7 @@ export default function ProductsAdmin() {
                 <div className="space-y-1">
                   <p className="font-display text-lg leading-snug">{p.name}</p>
                   <p className="text-sm text-muted">
-                    {[p.brand, categoryName(p.category)].filter(Boolean).join(" · ")} · <span className="font-bold text-ink">{formatPrice(p.price)}</span>
+                    {[p.brand, categoryName(p.category)].filter(Boolean).join(" · ")} · <span className="font-bold text-ink">{formatPrice(finalPrice(p))}</span>{hasDiscount(p) && <span className="text-success"> · {p.discount}% OFF (lista {formatPrice(p.price)})</span>}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {p.active === false ? <Badge tone="warning">Oculto en la tienda</Badge> : <Badge tone="success">Visible</Badge>}

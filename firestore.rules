@@ -29,13 +29,14 @@ service cloud.firestore {
 
     // ---------- Productos: los ve cualquiera, solo administración los cambia ----------
     function validProduct(p) {
-      return p.keys().hasOnly(['id', 'slug', 'name', 'brand', 'category', 'price', 'stock', 'image', 'imageAlt',
+      return p.keys().hasOnly(['id', 'slug', 'name', 'brand', 'category', 'price', 'discount', 'stock', 'image', 'imageAlt',
                                'description', 'sizes', 'colors', 'active', 'custom', 'stockBy'])
         && p.keys().hasAll(['name', 'category', 'price', 'image'])
         && text(p.name, 100)
         && textOrEmpty(p.get('brand', ''), 60)
         && text(p.category, 40)
         && p.price is int && p.price > 0 && p.price < 100000000
+        && (!('discount' in p) || (p.discount is int && p.discount >= 1 && p.discount <= 90))
         && (!('stock' in p) || (p.stock is int && p.stock >= 0 && p.stock < 100000))
         // Stock por medida y color: mapa «medida|color» → unidades. Cada valor se cuida desde el panel (las reglas no pueden recorrer un mapa).
         && (!('stockBy' in p) || (p.stockBy is map && p.stockBy.size() <= 900))

@@ -14,7 +14,10 @@ export interface Product {
   name: string;
   brand: string;
   category: string;
+  /** Precio de lista, sin descuento. Lo que se cobra sale de `finalPrice`. */
   price: number;
+  /** Descuento en porcentaje (1 a 90). Sin valor = sin descuento. */
+  discount?: number;
   image: string;
   imageAlt: string;
   description: string;
@@ -37,6 +40,11 @@ export interface Product {
 }
 
 export const LOW_STOCK = 3;
+
+// ---------- Descuento ----------
+export const hasDiscount = (p: Pick<Product, "discount">) => p.discount !== undefined && p.discount > 0;
+/** Precio que paga la persona: el de lista menos el descuento, en pesos enteros. Es el que va al carrito y al pedido. */
+export const finalPrice = (p: Pick<Product, "price" | "discount">) => (hasDiscount(p) ? Math.round((p.price * (100 - p.discount!)) / 100) : p.price);
 
 // ---------- Stock por medida y color ----------
 /** Clave de una combinación en `stockBy`. El «|» se reemplaza para que no se confunda con el separador. */
@@ -163,6 +171,7 @@ export function productFromData(id: string, x: Partial<Product>): Product {
     brand: x.brand ?? "",
     category: x.category ?? "",
     price: x.price ?? 0,
+    discount: x.discount,
     image: x.image ?? "",
     imageAlt: x.imageAlt ?? "",
     description: x.description ?? "",
@@ -243,6 +252,7 @@ function assertValid(p: ProductInput) {
     p.category.length > 0 && p.category.length <= LIMITS.category &&
     p.description.length <= LIMITS.description &&
     Number.isFinite(p.price) && p.price > 0 &&
+    (p.discount === undefined || (Number.isInteger(p.discount) && p.discount >= 1 && p.discount <= 90)) &&
     (p.stock === undefined || (Number.isInteger(p.stock) && p.stock >= 0)) &&
     (p.stockBy === undefined || Object.values(p.stockBy).every((n) => Number.isInteger(n) && n >= 0 && n < 100000)) &&
     isSafeImageSrc(p.image) &&

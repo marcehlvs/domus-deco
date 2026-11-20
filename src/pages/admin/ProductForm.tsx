@@ -7,7 +7,7 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
 import { Textarea } from "../../components/ui/Textarea";
-import { fetchAdminProduct, saveProduct, totalStock, variantKey, type Product } from "../../data/products";
+import { fetchAdminProduct, finalPrice, saveProduct, totalStock, variantKey, type Product } from "../../data/products";
 import { ColorDot } from "../../components/ui/ColorDot";
 import { formatPrice } from "../../lib/format";
 import { fileToDataUrl } from "../../lib/image";
@@ -21,6 +21,8 @@ interface FormState {
   brand: string;
   category: string;
   price: string;
+  /** Porcentaje de descuento como texto; vacío = sin descuento. */
+  discount: string;
   /** true = se controla el stock por medida y color; false = sin control (siempre disponible). */
   trackStock: boolean;
   /** Unidades por combinación, como texto de los campos. La clave es variantKey(medida, color). Vacío = 0. */
@@ -34,13 +36,14 @@ interface FormState {
   colors: { name: string; hex: string }[];
   active: boolean;
 }
-type Errors = Partial<Record<"name" | "price" | "stock" | "image" | "sizes" | "colors", string>>;
+type Errors = Partial<Record<"name" | "price" | "discount" | "stock" | "image" | "sizes" | "colors", string>>;
 
 const empty: FormState = {
   name: "",
   brand: "",
   category: "",
   price: "",
+  discount: "",
   trackStock: true,
   stockBy: {},
   description: "",
@@ -56,6 +59,7 @@ const fromProduct = (p: Product): FormState => ({
   brand: p.brand,
   category: p.category,
   price: String(p.price),
+  discount: p.discount === undefined ? "" : String(p.discount),
   trackStock: p.stockBy !== undefined || p.stock !== undefined,
   stockBy: Object.fromEntries(Object.entries(p.stockBy ?? {}).map(([k, n]) => [k, String(n)])),
   legacyStock: p.stockBy === undefined ? p.stock : undefined,
@@ -84,6 +88,7 @@ function validate(f: FormState): Errors {
   else if (f.name.trim().length > LIMITS.name) e.name = `El nombre puede tener hasta ${LIMITS.name} letras.`;
   const price = Number(f.price);
   if (!f.price || !Number.isFinite(price) || price <= 0) e.price = "Ingresá un precio mayor a 0.";
+  if (f.discount.trim() !== "" && !(Number.isInteger(Number(f.discount)) && Number(f.discount) >= 1 && Number(f.discount) <= 90)) e.discount = "Ingresá un porcentaje entero entre 1 y 90, o dejalo vacío.";
   if (f.trackStock && combos(f).some((c) => !validUnits(f.stockBy[c.key]))) e.stock = "Revisá el stock: tienen que ser números enteros, 0 o más.";
   if (!f.image) e.image = "Agregá una foto: subila o pegá su dirección.";
   else if (!isSafeImageSrc(f.image)) e.image = "La dirección tiene que empezar con https:// (o subí la foto desde tu equipo).";
@@ -198,6 +203,7 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
           brand: form.brand.trim(),
           category: form.category,
           price: Math.round(Number(form.price)),
+          discount: form.discount.trim() === "" ? undefined : Number(form.discount),
           // Stock por medida y color. Sin control, ninguno de los dos campos se guarda.
           stock: undefined,
           stockBy: form.trackStock ? Object.fromEntries(combos(form).map((c) => [c.key, cellUnits(form.stockBy[c.key])])) : undefined,
@@ -277,6 +283,22 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
             error={errors.price}
             hint={Number.isFinite(price) && price > 0 ? `Se muestra como ${formatPrice(price)}` : undefined}
             onChange={(e) => set("price", e.target.value)}
+          />
+          <Input
+            label="Descuento (% OFF, opcional)"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={90}
+            step={1}
+            value={form.discount}
+            error={errors.discount}
+            hint={
+              form.discount.trim() !== "" && !errors.discount && Number.isFinite(price) && price > 0
+                ? `${form.discount}% OFF: se cobra ${formatPrice(finalPrice({ price: Math.round(price), discount: Number(form.discount) }))} en vez de ${formatPrice(Math.round(price))}`
+                : "Dejalo vacío si el producto no tiene descuento. El precio de arriba es el de lista."
+            }
+            onChange={(e) => set("discount", e.target.value)}
           />
           <Textarea label="Descripción" maxLength={LIMITS.description} value={form.description} onChange={(e) => set("description", e.target.value)} />
           <Input

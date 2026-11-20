@@ -12,6 +12,9 @@ Lista viva de lo que falta para que Domus Deco venda de verdad. Regla: **no se c
 - [x] **2. Pedidos reales.** Checkout en `/checkout` (nombre, correo, teléfono, entrega, dirección, aclaraciones). Guarda el pedido en Firestore como «Pendiente de pago», con número correlativo (#1, #2…). La persona ve su pedido en `/pedido/<id>` y la lista en «Mi cuenta → Mis pedidos». El panel `/admin/pedidos` ya no es de demostración: muestra productos con medida y color, dirección, teléfono (con botón para escribirle por WhatsApp), aclaraciones y cambia el estado. Código: `src/data/orders.ts`, `src/pages/Checkout.tsx`, `src/pages/OrderPlaced.tsx`.
 - [x] **3. Envío y retiro.** Por ahora una sola forma: **envío a coordinar por WhatsApp**. El retiro en el local está preparado pero apagado: se enciende en `src/data/delivery.ts` (`retiro.enabled: true` y la dirección).
 
+- [x] **Paginación de la tienda.** Antes mostraba todos los productos juntos. Ahora son 12 por página (entra justo en la grilla de 2, 3 y 4 columnas), con la página en la dirección (`?pagina=2`) y se vuelve a la 1 al buscar, filtrar u ordenar. En el celular muestra «Página 2 de 5»; desde 768 px, los números. La lista del panel de productos **no** está paginada (queda para cuando haya muchos productos).
+- [x] **Descuento (% OFF).** En el formulario de producto, campo opcional «Descuento» (1 a 90). La tienda muestra el precio nuevo, el de lista tachado y «20% OFF» (tarjeta, ficha, carrito y checkout). Lo que se cobra y se guarda en el pedido es el precio con descuento; los filtros y el orden por precio también lo usan. El precio que cargás sigue siendo el de lista.
+
 **Cómo se mueve el stock (importante):** el stock **se descuenta cuando marcás el pedido como «Pagado»** y **vuelve si después lo cancelás**. Un pedido «Pendiente de pago» **no reserva** unidades. El checkout vuelve a leer el stock justo antes de crear el pedido, pero dos personas pueden pedir lo último al mismo tiempo. Reservar al crear el pedido necesita Cloud Functions (plan Blaze): queda anotado abajo.
 
 ---
@@ -20,7 +23,7 @@ Lista viva de lo que falta para que Domus Deco venda de verdad. Regla: **no se c
 
 Nada de esto pude probarlo contra tu Firebase real. La lógica de stock está probada con casos de ejemplo y el proyecto compila, pero las reglas y las transacciones solo se prueban en tu proyecto.
 
-- [ ] **Publicar las reglas nuevas:** copiá `firestore.rules` a Firestore → Reglas → Publicar (o `firebase deploy --only firestore:rules`). Sin esto, el checkout falla.
+- [ ] **Publicar las reglas nuevas (de nuevo, ahora incluyen el campo `discount`; sin eso no se puede guardar un producto con descuento):** copiá `firestore.rules` a Firestore → Reglas → Publicar (o `firebase deploy --only firestore:rules`). Sin esto, el checkout falla.
 - [ ] **Hacer un pedido de prueba** con una cuenta común (no la de admin): ¿se crea?, ¿aparece en «Mis pedidos»?, ¿el número arranca en 1? Si falla con «permission-denied», avisame con el texto del error: lo más probable es un ajuste en la regla del contador.
 - [ ] **Probar el stock de punta a punta** con un producto de prueba: cargá stock por medida y color → pedido → en `/admin/pedidos` pasalo a «Pagado» (el stock baja) → pasalo a «Cancelado» (el stock vuelve).
 - [ ] **Probar en el celular** (375 px): el checkout, la grilla de stock del formulario y la ficha con medidas agotadas.

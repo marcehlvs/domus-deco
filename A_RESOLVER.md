@@ -66,7 +66,7 @@ Nada de esto pude probarlo contra tu Firebase real. La lógica de stock está pr
 
 ## Para vender mejor
 
-- [x] **Carrusel en Destacados y Navidad.** Las tarjetas del Home y de la sección Navidad se deslizan con el dedo, con flechas (desde 768 px) y con el teclado (← →); sin movimiento automático. Código: `src/components/ui/Carousel.tsx`.
+- [x] **Carrusel en Destacados y Navidad.** Las tarjetas del Home y de la sección Navidad se deslizan con el dedo, con flechas (desde 768 px) y con el teclado (← →). **Avanzan solos** cada 5 segundos y, al llegar al final, vuelven al principio. Se frenan con el mouse encima, al tocar o enfocar, con la pestaña en segundo plano y si el equipo tiene «reducir movimiento»; hay un botón «Pausar movimiento». Se prende con `autoPlay` (hoy solo en el Inicio; la Tienda es una grilla). Código: `src/components/ui/Carousel.tsx`, `src/lib/autoplay.ts`.
 
 - [ ] **5. Navidad.** Hecho en el código (`src/components/store/ChristmasBanner.tsx`). **Falta de tu parte:** crear la categoría «Navidad» en `/admin/categorias`, cargar productos en ella y completar `lastOrderDate` en `src/data/store.ts` (último día para pedir y recibir a tiempo). La sección aparece sola y se oculta el 25/12.
 - [x] **6. Que se vea bien al compartir.** Hecho en tres partes (probarlo: ver «Probar antes de publicar»):

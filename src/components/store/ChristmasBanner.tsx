@@ -48,7 +48,7 @@ export function ChristmasBanner() {
           <ArrowRight aria-hidden className="size-4" />
         </Link>
       </Card>
-      <Carousel label={category.name}>
+      <Carousel label={category.name} autoPlay>
         {state.data.slice(0, 12).map((p) => (
           <ProductCard key={p.id} product={p} />
         ))}

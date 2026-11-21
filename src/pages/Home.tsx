@@ -54,7 +54,7 @@ function Featured() {
       )}
 
       {state.status === "success" && (
-        <Carousel label="Destacados">
+        <Carousel label="Destacados" autoPlay>
           {state.data.slice(0, 12).map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}

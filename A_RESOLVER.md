@@ -45,6 +45,8 @@ Nada de esto pude probarlo contra tu Firebase real. La lógica de stock está pr
 
 ## Para vender mejor
 
+- [x] **Carrusel en Destacados y Navidad.** Las tarjetas del Home y de la sección Navidad se deslizan con el dedo, con flechas (desde 768 px) y con el teclado (← →); sin movimiento automático. Código: `src/components/ui/Carousel.tsx`.
+
 - [ ] **5. Navidad.** Hecho en el código (`src/components/store/ChristmasBanner.tsx`). **Falta de tu parte:** crear la categoría «Navidad» en `/admin/categorias`, cargar productos en ella y completar `lastOrderDate` en `src/data/store.ts` (último día para pedir y recibir a tiempo). La sección aparece sola y se oculta el 25/12.
 - [x] **6. Que se vea bien al compartir.** Hecho en tres partes (probarlo: ver «Probar antes de publicar»):
   - **Vista previa del link** (foto, nombre y precio al pegar un producto en WhatsApp o Instagram). Al hacer `npm run build`, el script `scripts/prerender.mjs` lee los productos de Firestore y crea una página por producto con sus datos en el `<head>` (`dist/producto/<slug>.html`), la foto como archivo (`dist/og/`), el `sitemap.xml` y el `robots.txt`. Para el resto de las páginas queda una vista previa general con el logo (`public/og-default.jpg`). **Límite:** se genera al publicar; si cargás o cambiás un producto, su vista previa se actualiza en el próximo `npm run build` + `firebase deploy --only hosting`. Con el plan Blaze se puede reemplazar por una Cloud Function que lo haga al momento.
@@ -53,6 +55,8 @@ Nada de esto pude probarlo contra tu Firebase real. La lógica de stock está pr
 - [x] **7. Varias fotos por producto.** Cada producto puede tener la foto principal más **hasta 4 fotos extra** (5 en total). En el formulario, bloque «Más fotos»: se eligen varias de una vez, se pueden quitar y «Hacer principal» intercambia una extra con la principal. En la ficha hay carrusel (se desliza con el dedo, con flechas, miniaturas y teclado). Cada foto se achica a 900 px y, si pesa de más, se comprime otro poco hasta entrar. **Cómo se guardan:** las extras viven en una subcolección aparte (`products/{id}/photos/1…4`) y el producto solo guarda cuántas tiene (`extraPhotos`); así el listado de la tienda sigue cargando una sola foto por producto y la ficha pide las extras al abrirse. La principal es la del listado, el carrito y las vistas previas al compartir. Código: `src/components/product/ProductGallery.tsx`, `src/data/products.ts` (`fetchExtraPhotos`, `saveProduct`) y `src/pages/admin/ProductForm.tsx`. **Cuando tengas plan Blaze:** conviene pasar las fotos a Firebase Storage (más fotos, más grandes, sin tocar el límite de Firestore); queda anotado.
 
 ## Para después
+
+- [ ] **Revisión de código** (`REVISION_CODIGO.md`): lo más importante es achicar las fotos del listado (miniaturas), agregar tests/ESLint/CI y sacar la copia de la lógica de precio de `scripts/prerender.mjs`.
 
 - [ ] Envío con **costo por zona** (hoy es «a coordinar»).
 - [ ] Activar **retiro en el local** (apagado en `src/data/delivery.ts`).

@@ -4,6 +4,7 @@ import { ProductCard, productGrid } from "../components/product/ProductCard";
 import { ChristmasBanner } from "../components/store/ChristmasBanner";
 import { Perks } from "../components/store/Perks";
 import { Button, LinkButton } from "../components/ui/Button";
+import { Carousel } from "../components/ui/Carousel";
 import { Card } from "../components/ui/Card";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
 import { fetchProducts } from "../data/products";
@@ -53,11 +54,11 @@ function Featured() {
       )}
 
       {state.status === "success" && (
-        <div className={productGrid}>
-          {state.data.slice(0, 4).map((p) => (
+        <Carousel label="Destacados">
+          {state.data.slice(0, 12).map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
-        </div>
+        </Carousel>
       )}
     </section>
   );

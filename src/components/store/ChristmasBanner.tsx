@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Gift } from "lucide-react";
-import { ProductCard, productGrid } from "../product/ProductCard";
+import { ProductCard } from "../product/ProductCard";
 import { Card } from "../ui/Card";
+import { Carousel } from "../ui/Carousel";
 import { fetchProducts } from "../../data/products";
 import { store } from "../../data/store";
 import { useAsync } from "../../lib/useAsync";
@@ -47,11 +48,11 @@ export function ChristmasBanner() {
           <ArrowRight aria-hidden className="size-4" />
         </Link>
       </Card>
-      <div className={productGrid}>
-        {state.data.slice(0, 4).map((p) => (
+      <Carousel label={category.name}>
+        {state.data.slice(0, 12).map((p) => (
           <ProductCard key={p.id} product={p} />
         ))}
-      </div>
+      </Carousel>
     </section>
   );
 }

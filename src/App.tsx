@@ -1,19 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { AnimatePresence } from "motion/react";
 import IntroScreen from "./components/intro/IntroScreen";
 import { hasSeenIntro, markIntroSeen } from "./lib/intro";
 import { useCategories } from "./store/categories";
-import AdminGuard from "./components/admin/AdminGuard";
 import RequireAuth from "./components/auth/RequireAuth";
-import AdminLayout from "./components/admin/AdminLayout";
 import Layout from "./components/layout/Layout";
-import CategoriesAdmin from "./pages/admin/CategoriesAdmin";
-import Dashboard from "./pages/admin/Dashboard";
-import OrdersAdmin from "./pages/admin/OrdersAdmin";
-import ProductForm from "./pages/admin/ProductForm";
-import ProductsAdmin from "./pages/admin/ProductsAdmin";
+import { StatePanel } from "./components/ui/StatePanel";
+import { lazyRoute } from "./lib/lazyRoute";
 import { legal } from "./data/legal";
+import { store } from "./data/store";
 import Account from "./pages/Account";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
@@ -25,6 +21,15 @@ import Pending from "./pages/Pending";
 import ProductDetail from "./pages/ProductDetail";
 import Shop from "./pages/Shop";
 import Styleguide from "./pages/Styleguide";
+
+// El panel de administración se descarga solo al entrar a /admin: quien solo compra no lo baja.
+const AdminGuard = lazyRoute(() => import("./components/admin/AdminGuard"));
+const AdminLayout = lazyRoute(() => import("./components/admin/AdminLayout"));
+const Dashboard = lazyRoute(() => import("./pages/admin/Dashboard"));
+const ProductsAdmin = lazyRoute(() => import("./pages/admin/ProductsAdmin"));
+const ProductForm = lazyRoute(() => import("./pages/admin/ProductForm"));
+const CategoriesAdmin = lazyRoute(() => import("./pages/admin/CategoriesAdmin"));
+const OrdersAdmin = lazyRoute(() => import("./pages/admin/OrdersAdmin"));
 
 export default function App() {
   // La intro aparece solo al abrir la portada («/») y una vez por pestaña.
@@ -52,12 +57,22 @@ export default function App() {
             <Route path="producto/:slug" element={<ProductDetail />} />
             <Route path="carrito" element={<Cart />} />
             <Route path="ingresar" element={<Login />} />
-            <Route element={<RequireAuth />}>
-              <Route path="cuenta" element={<Account />} />
+            {/* Con «guestCheckout» (src/data/store.ts) se compra sin cuenta; apagado, checkout y pedidos piden ingresar. */}
+            <Route element={store.guestCheckout ? <Outlet /> : <RequireAuth />}>
               <Route path="checkout" element={<Checkout />} />
               <Route path="pedido/:id" element={<OrderPlaced />} />
             </Route>
-            <Route path="admin" element={<AdminGuard />}>
+            <Route element={<RequireAuth />}>
+              <Route path="cuenta" element={<Account />} />
+            </Route>
+            <Route
+              path="admin"
+              element={
+                <Suspense fallback={<StatePanel variant="loading" title="Cargando el panel" />}>
+                  <AdminGuard />
+                </Suspense>
+              }
+            >
               <Route element={<AdminLayout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="productos" element={<ProductsAdmin />} />

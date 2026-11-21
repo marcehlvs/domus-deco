@@ -7,34 +7,25 @@ import { Skeleton, StatePanel } from "../components/ui/StatePanel";
 import { Textarea } from "../components/ui/Textarea";
 import { delivery, enabledMethods, type DeliveryMethod } from "../data/delivery";
 import { createOrder, type OrderItem } from "../data/orders";
-import { claimed, fetchProducts, fetchProductsFresh, finalPrice, unitsFor, type Product } from "../data/products";
+import { fetchProducts, fetchProductsFresh, finalPrice } from "../data/products";
+import { cartLines, cartTotal, stockIssues } from "../lib/cartLines";
+import { store } from "../data/store";
+import { auth } from "../lib/firebase";
 import { formatPrice } from "../lib/format";
 import { useAsync } from "../lib/useAsync";
 import { useAuth } from "../store/auth";
-import { useCart, type CartItem } from "../store/cart";
+import { useCart } from "../store/cart";
 
 type Errors = Partial<Record<"name" | "email" | "phone" | "address", string>>;
 
-/** Lo que no se puede vender como está en el carrito: sin stock o más unidades de las que quedan. */
-function stockProblems(items: CartItem[], catalog: Product[]) {
-  const problems: string[] = [];
-  items.forEach((item) => {
-    const p = catalog.find((x) => x.id === item.productId);
-    if (!p) {
-      problems.push("Un producto del carrito ya no está en la tienda.");
-      return;
-    }
-    const limit = unitsFor(p, item.size, item.color);
-    if (limit === undefined) return;
-    if (claimed(p, item.size, item.color, items) > limit)
-      problems.push(limit <= 0 ? `${p.name} (${item.color}, ${item.size}) ya no tiene stock.` : `De ${p.name} (${item.color}, ${item.size}) quedan ${limit}.`);
-  });
-  return [...new Set(problems)];
-}
+// Códigos de Firebase cuando la sesión anónima no está activada en la consola (ver A_RESOLVER.md).
+const GUEST_OFF = ["auth/operation-not-allowed", "auth/admin-restricted-operation", "auth/configuration-not-found"];
 
 export default function Checkout() {
   const { items, clear } = useCart();
   const user = useAuth((s) => s.user);
+  const member = useAuth((s) => s.member);
+  const signInGuest = useAuth((s) => s.signInGuest);
   const navigate = useNavigate();
   const { state, retry } = useAsync(() => fetchProducts(), []);
 
@@ -48,19 +39,11 @@ export default function Checkout() {
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [guestOff, setGuestOff] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
 
-  const lines = useMemo(
-    () =>
-      state.status === "success"
-        ? items.flatMap((item) => {
-            const p = state.data.find((x) => x.id === item.productId);
-            return p ? [{ item, p }] : [];
-          })
-        : [],
-    [state, items],
-  );
-  const total = lines.reduce((sum, { item, p }) => sum + finalPrice(p) * item.qty, 0);
+  const lines = useMemo(() => (state.status === "success" ? cartLines(items, state.data) : []), [state, items]);
+  const total = cartTotal(lines);
   const title = <h1 className="text-3xl md:text-4xl">Finalizar compra</h1>;
 
   if (items.length === 0)
@@ -90,7 +73,7 @@ export default function Checkout() {
       </div>
     );
 
-  const pendingProblems = stockProblems(items, state.data);
+  const pendingProblems = stockIssues(items, state.data);
 
   const validate = (): Errors => {
     const e: Errors = {};
@@ -109,14 +92,16 @@ export default function Checkout() {
       requestAnimationFrame(() => ev.currentTarget.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
       return;
     }
-    if (!user) return;
     setSaving(true);
     setFailed(false);
+    setGuestOff(false);
     setProblems([]);
     try {
+      // Comprar no pide cuenta: sin sesión se abre una de invitada/o (anónima). Sin Firebase (modo demostración) no hace falta.
+      const uid = user?.uid ?? (auth ? await signInGuest() : "demo-guest");
       // Se confirma el stock con datos recién leídos, no con la copia de 30 segundos de la tienda.
       const catalog = await fetchProductsFresh();
-      const found = stockProblems(items, catalog);
+      const found = stockIssues(items, catalog);
       if (found.length > 0) {
         setProblems(found);
         setSaving(false);
@@ -133,12 +118,13 @@ export default function Checkout() {
           delivery: method,
           note: note.trim(),
         },
-        user.uid,
+        uid,
       );
       clear();
       navigate(`/pedido/${order.id}`, { replace: true });
-    } catch {
-      setFailed(true);
+    } catch (e) {
+      if (GUEST_OFF.includes((e as { code?: string }).code ?? "")) setGuestOff(true);
+      else setFailed(true);
       setSaving(false);
     }
   };
@@ -152,6 +138,15 @@ export default function Checkout() {
         <div className="space-y-6">
           <Card className="space-y-4">
             <h2 className="text-xl">Tus datos</h2>
+            {store.guestCheckout && !member && (
+              <p className="text-sm text-muted">
+                No hace falta crear una cuenta para comprar. Si ya tenés una,{" "}
+                <Link to="/ingresar" state={{ from: "/checkout" }} className="inline-flex min-h-11 items-center font-semibold text-ink underline">
+                  ingresá
+                </Link>{" "}
+                para ver tus pedidos desde cualquier dispositivo.
+              </p>
+            )}
             <Input label="Nombre y apellido" autoComplete="name" value={name} error={errors.name} onChange={(e) => setName(e.target.value)} />
             <div className="grid gap-4 md:grid-cols-2">
               <Input label="Correo" type="email" inputMode="email" autoComplete="email" value={email} error={errors.email} onChange={(e) => setEmail(e.target.value)} />
@@ -235,6 +230,15 @@ export default function Checkout() {
                 Volver al carrito
               </Link>
             </div>
+          )}
+          {guestOff && (
+            <p role="alert" className="text-sm text-danger">
+              Por ahora la compra sin cuenta no está disponible.{" "}
+              <Link to="/ingresar" state={{ from: "/checkout" }} className="font-semibold underline">
+                Ingresá o creá una cuenta
+              </Link>{" "}
+              para continuar.
+            </p>
           )}
           {failed && (
             <p role="alert" className="text-sm text-danger">

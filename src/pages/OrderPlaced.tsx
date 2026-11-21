@@ -9,6 +9,8 @@ import { fetchOrder, type Order } from "../data/orders";
 import { formatPrice } from "../lib/format";
 import { useAsync } from "../lib/useAsync";
 import { whatsappLink } from "../lib/whatsapp";
+import { store } from "../data/store";
+import { useAuth } from "../store/auth";
 
 const messageFor = (o: Order) =>
   [
@@ -22,11 +24,12 @@ const messageFor = (o: Order) =>
 export default function OrderPlaced() {
   const { id = "" } = useParams();
   const { state, retry } = useAsync(() => fetchOrder(id), [id]);
+  const { member, ready } = useAuth();
 
   const back = (
-    <Link to="/cuenta" className="inline-flex min-h-11 items-center gap-2 rounded-control text-muted hover:text-ink">
+    <Link to={member ? "/cuenta" : "/tienda"} className="inline-flex min-h-11 items-center gap-2 rounded-control text-muted hover:text-ink">
       <ArrowLeft aria-hidden className="size-4" />
-      Mis pedidos
+      {member ? "Mis pedidos" : "Volver a la tienda"}
     </Link>
   );
 
@@ -54,7 +57,7 @@ export default function OrderPlaced() {
     return (
       <div className="space-y-4">
         {back}
-        <StatePanel variant="error" title="No encontramos este pedido" description="Puede que el enlace esté mal o que sea de otra cuenta." action={<LinkButton to="/tienda" variant="secondary">Ver la tienda</LinkButton>} />
+        <StatePanel variant="error" title="No encontramos este pedido" description="Puede que el enlace esté mal, que sea de otra cuenta o que lo hayas hecho desde otro dispositivo sin cuenta." action={<LinkButton to="/tienda" variant="secondary">Ver la tienda</LinkButton>} />
       </div>
     );
 
@@ -66,6 +69,15 @@ export default function OrderPlaced() {
         <h1 className="text-3xl md:text-4xl">Pedido #{order.number}</h1>
         {order.status === "pendiente" && <p className="text-muted">¡Gracias! Lo recibimos. Escribinos por WhatsApp para acordar el pago y la entrega.</p>}
       </div>
+      {store.guestCheckout && ready && !member && (
+        <p role="note" className="max-w-prose rounded-card border border-line bg-alt p-4 text-sm">
+          Compraste sin cuenta: este pedido se ve solo en este dispositivo. Si querés verlo desde cualquier lado,{" "}
+          <Link to="/ingresar" state={{ from: `/pedido/${order.id}` }} className="font-semibold underline">
+            creá una cuenta
+          </Link>{" "}
+          y se suma a «Mis pedidos». El número de pedido es #{order.number}: guardalo por si hace falta.
+        </p>
+      )}
       <div className="grid gap-6 md:grid-cols-[1fr_20rem] md:items-start">
         <Card>
           <OrderSummary order={order} />

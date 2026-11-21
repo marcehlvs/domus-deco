@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ClipboardList, Info, LayoutDashboard, Package, Tags } from "lucide-react";
 import { db } from "../../lib/firebase";
+import { usePendingOrders } from "../../store/pendingOrders";
 import { buttonStyles } from "../ui/Button";
 
 const tabs = [
@@ -11,6 +13,12 @@ const tabs = [
 ];
 
 export default function AdminLayout() {
+  const pending = usePendingOrders((s) => s.count);
+  const refresh = usePendingOrders((s) => s.refresh);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
   return (
     <div className="space-y-6">
       <div className="space-y-3">
@@ -25,6 +33,14 @@ export default function AdminLayout() {
             >
               <Icon aria-hidden className="size-4" />
               {label}
+              {to === "/admin/pedidos" && !!pending && (
+                <>
+                  <span aria-hidden className="ml-1 min-w-5 rounded-full bg-accent px-1.5 text-center text-xs font-bold text-on-accent">
+                    {pending}
+                  </span>
+                  <span className="sr-only"> ({pending} {pending === 1 ? "pendiente" : "pendientes"} de pago)</span>
+                </>
+              )}
             </NavLink>
           ))}
         </nav>

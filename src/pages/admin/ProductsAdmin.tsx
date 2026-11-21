@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { Download, Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
+import { Download, Eye, EyeOff, ImageDown, Pencil, Plus, Trash2 } from "lucide-react";
 import { LegacyImport } from "../../components/admin/LegacyImport";
 import { Badge } from "../../components/ui/Badge";
 import { Button, LinkButton } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
-import { fetchAdminProducts, finalPrice, hasDiscount, isLowStock, isSoldOut, removeProduct, setProductActive, totalStock, type Product } from "../../data/products";
+import { fetchAdminProducts, finalPrice, hasDiscount, isLowStock, isSoldOut, needsThumbnail, optimizeImages, removeProduct, setProductActive, totalStock, type Product } from "../../data/products";
 import { downloadStockSheet } from "../../lib/downloadStockSheet";
 import { formatPrice } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
@@ -20,6 +20,8 @@ export default function ProductsAdmin() {
   const [failed, setFailed] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportFailed, setExportFailed] = useState(false);
+  const [optimizing, setOptimizing] = useState<string | null>(null);
+  const [optimizeFailed, setOptimizeFailed] = useState(false);
 
   const products = state.status === "success" ? state.data : [];
 
@@ -33,6 +35,22 @@ export default function ProductsAdmin() {
       setExportFailed(true);
     } finally {
       setExporting(false);
+    }
+  };
+
+  // Productos cargados antes de las miniaturas: su foto entera viaja en el listado de la tienda.
+  const heavy = products.filter((p) => p.custom && needsThumbnail(p)).length;
+  const optimize = async () => {
+    setOptimizing("Achicando…");
+    setOptimizeFailed(false);
+    try {
+      const n = await optimizeImages((done, total) => setOptimizing(`Achicando ${done} de ${total}…`));
+      show(n === 1 ? "1 foto achicada" : `${n} fotos achicadas`);
+    } catch {
+      setOptimizeFailed(true);
+    } finally {
+      setOptimizing(null);
+      retry();
     }
   };
 
@@ -80,6 +98,23 @@ export default function ProductsAdmin() {
       )}
 
       <LegacyImport onDone={retry} />
+
+      {heavy > 0 && (
+        <div role="note" className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-alt p-4">
+          <p className="max-w-prose text-sm">
+            {heavy === 1 ? "1 producto tiene" : `${heavy} productos tienen`} la foto entera en el listado de la tienda, y eso la hace más lenta y gasta datos de tu base. Achicarla no cambia lo que se ve en la ficha: la foto de ahora queda como foto grande.
+          </p>
+          <Button variant="secondary" loading={optimizing !== null} onClick={optimize}>
+            {optimizing === null && <ImageDown aria-hidden className="size-4" />}
+            {optimizing ?? "Achicar fotos del listado"}
+          </Button>
+        </div>
+      )}
+      {optimizeFailed && (
+        <p role="alert" className="text-danger">
+          No pudimos achicar todas las fotos. Las que se hicieron quedaron guardadas: probá de nuevo para seguir con las que faltan.
+        </p>
+      )}
 
       {failed && (
         <p role="alert" className="text-danger">

@@ -14,12 +14,13 @@ const messages: Record<string, string> = {
   "auth/invalid-email": "Ingresá un correo válido.",
   "auth/too-many-requests": "Demasiados intentos. Probá de nuevo en unos minutos.",
   "auth/network-request-failed": "Sin conexión. Revisá tu internet e intentá de nuevo.",
+  "auth/credential-already-in-use": "Ese correo ya tiene una cuenta. Ingresá con ella.",
   "auth/popup-blocked": "Tu navegador bloqueó la ventana de Google. Permitila e intentá de nuevo.",
   "app/not-configured": "El ingreso no está disponible por ahora.",
 };
 
 export default function Login() {
-  const { user, signInEmail, register, signInGoogle, resetPassword } = useAuth();
+  const { member, signInEmail, register, signInGoogle, resetPassword } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -27,7 +28,7 @@ export default function Login() {
   const form = useRef<HTMLFormElement>(null);
   const from = (useLocation().state as { from?: string } | null)?.from ?? "/";
 
-  if (user) return <Navigate to={from} replace />;
+  if (member) return <Navigate to={from} replace />;
 
   const run = async (action: () => Promise<void>) => {
     setBusy(true);

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Share2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Bell, MessageCircle, Share2, ShoppingBag } from "lucide-react";
 import { Badge } from "../components/ui/Badge";
 import { Button, buttonStyles, LinkButton } from "../components/ui/Button";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
@@ -88,13 +88,17 @@ function ProductView({ product }: { product: Product }) {
     if (result === "copied") show("Link copiado");
     else if (result === "failed") warn("No pudimos compartir. Copiá la dirección de la barra del navegador.");
   };
+  // Combinación agotada: la persona le deja el aviso al local por WhatsApp (sin cuenta ni base de datos de por medio).
+  const notify = whatsappLink(
+    `Hola! Avisenme cuando vuelva "${product.name}" (medida ${size}, color ${color}).\n${window.location.origin}/producto/${product.slug}`,
+  );
   const whatsapp = whatsappLink(
     `Hola! Quería consultar por "${product.name}" (medida ${size}, color ${color}).\n${window.location.origin}/producto/${product.slug}`,
   );
 
   return (
     <div className="grid gap-6 md:grid-cols-[minmax(0,26rem)_1fr] md:gap-10">
-      <ProductGallery product={product} />
+      <ProductGallery product={product} color={color} />
       <div className="space-y-6">
         <div className="space-y-1">
           {product.brand && <p className="text-muted">{product.brand}</p>}
@@ -144,6 +148,19 @@ function ProductView({ product }: { product: Product }) {
             ))}
           </div>
         </fieldset>
+
+        {comboSoldOut && notify && (
+          <div className="max-w-prose space-y-2 rounded-card border border-line bg-alt p-4">
+            <p className="text-sm">
+              {size} en {color} está agotado por ahora. Escribinos y te avisamos cuando vuelva.
+            </p>
+            <a href={notify} target="_blank" rel="noopener noreferrer" className={buttonStyles({ variant: "secondary", className: "w-full md:w-auto" })}>
+              <Bell aria-hidden className="size-4" />
+              Avisame cuando vuelva
+              <span className="sr-only"> (se abre en WhatsApp, en una pestaña nueva)</span>
+            </a>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-3">
           <Button size="lg" className="hidden md:inline-flex" disabled={comboSoldOut} onClick={addToCart}>

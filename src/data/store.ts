@@ -9,6 +9,9 @@ export const store = {
     facebook: "", // nombre de la página, el que aparece en facebook.com/…
     email: "domusdecostore@gmail.com",
   },
+  // Comprar sin crear cuenta. APAGADO a propósito: encenderlo abre una sesión anónima de Firebase en el checkout, y eso
+  // pide activar «Anónimo» en Authentication y «Hacer cumplir» de App Check (ver SEGURIDAD.md). Apagado, el checkout pide ingresar.
+  guestCheckout: false,
   // Navidad en la portada. La sección aparece sola cuando existe la categoría «Navidad» (creala en /admin/categorias)
   // y tiene productos visibles; desaparece pasada la fecha «showUntil».
   christmas: {

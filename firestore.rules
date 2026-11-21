@@ -30,7 +30,7 @@ service cloud.firestore {
     // ---------- Productos: los ve cualquiera, solo administración los cambia ----------
     function validProduct(p) {
       return p.keys().hasOnly(['id', 'slug', 'name', 'brand', 'category', 'price', 'discount', 'stock', 'image', 'imageAlt',
-                               'description', 'sizes', 'colors', 'active', 'custom', 'stockBy', 'extraPhotos'])
+                               'description', 'sizes', 'colors', 'active', 'custom', 'stockBy', 'extraPhotos', 'fullImage', 'imageColor'])
         && p.keys().hasAll(['name', 'category', 'price', 'image'])
         && text(p.name, 100)
         && textOrEmpty(p.get('brand', ''), 60)
@@ -40,7 +40,11 @@ service cloud.firestore {
         && (!('stock' in p) || (p.stock is int && p.stock >= 0 && p.stock < 100000))
         // Stock por medida y color: mapa «medida|color» → unidades. Cada valor se cuida desde el panel (las reglas no pueden recorrer un mapa).
         && (!('stockBy' in p) || (p.stockBy is map && p.stockBy.size() <= 900))
+        // `image` es la miniatura (~480 px) cuando fullImage == true; la foto grande vive en products/{id}/photos/main.
         && text(p.image, 700000)
+        && (!('fullImage' in p) || p.fullImage is bool)
+        // Color de la paleta que muestra la foto principal (que coincida con una de `colors` lo cuida el panel).
+        && (!('imageColor' in p) || text(p.imageColor, 40))
         // Cuántas fotos extra tiene (viven en products/{id}/photos; ver más abajo).
         && (!('extraPhotos' in p) || (p.extraPhotos is int && p.extraPhotos >= 1 && p.extraPhotos <= 4))
         && textOrEmpty(p.get('imageAlt', ''), 200)
@@ -55,13 +59,16 @@ service cloud.firestore {
       allow create, update: if isAdmin() && validProduct(request.resource.data);
       allow delete: if isAdmin();
 
-      // Fotos extra del producto: hasta 4, con IDs «1» a «4». Se leen solo en la ficha y el panel, no en el listado de la tienda.
+      // Fotos del producto que NO viajan en el listado: la grande principal (ID «main») y hasta 4 extra (IDs «1» a «4»).
+      // Se leen solo en la ficha y el panel. Cada una puede indicar el color que muestra (que sea de la paleta lo cuida el panel).
       match /photos/{n} {
         allow read: if true;
         allow create, update: if isAdmin()
-          && n in ['1', '2', '3', '4']
-          && request.resource.data.keys().hasOnly(['src'])
-          && text(request.resource.data.src, 700000);
+          && n in ['main', '1', '2', '3', '4']
+          && request.resource.data.keys().hasOnly(['src', 'color'])
+          && request.resource.data.keys().hasAll(['src'])
+          && text(request.resource.data.src, 700000)
+          && (!('color' in request.resource.data) || text(request.resource.data.color, 40));
         allow delete: if isAdmin();
       }
     }

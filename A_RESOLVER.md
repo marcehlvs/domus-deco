@@ -2,7 +2,7 @@
 
 Lista viva de lo que falta para que Domus Deco venda de verdad. Regla: **no se cierra una tarea hasta tildarla acá**, y cada tarea nueva que aparece se anota acá antes de empezarla, para que no queden cosas a medias.
 
-Última actualización: 20/11/2026.
+Última actualización: 21/11/2026.
 
 ---
 
@@ -15,11 +15,32 @@ Lista viva de lo que falta para que Domus Deco venda de verdad. Regla: **no se c
 - [x] **Paginación de la tienda.** Antes mostraba todos los productos juntos. Ahora son 12 por página (entra justo en la grilla de 2, 3 y 4 columnas), con la página en la dirección (`?pagina=2`) y se vuelve a la 1 al buscar, filtrar u ordenar. En el celular muestra «Página 2 de 5»; desde 768 px, los números. La lista del panel de productos **no** está paginada (queda para cuando haya muchos productos).
 - [x] **Descuento (% OFF).** En el formulario de producto, campo opcional «Descuento» (1 a 90). La tienda muestra el precio nuevo, el de lista tachado y «20% OFF» (tarjeta, ficha, carrito y checkout). Lo que se cobra y se guarda en el pedido es el precio con descuento; los filtros y el orden por precio también lo usan. El precio que cargás sigue siendo el de lista.
 
+- [x] **Miniaturas en el listado.** Al guardar un producto con foto subida desde el equipo, `image` pasa a ser una **miniatura de ~480 px (20–40 KB)** y la foto grande queda aparte en `products/{id}/photos/main` (marca `fullImage` en el producto). La tienda, el carrito y el Home usan la miniatura; la ficha pide la grande al abrirse, y las vistas previas al compartir también la usan. Las fotos ya chicas (menos de ~45 KB) y los links `https://` se guardan como estaban. Para los productos que ya cargaste hay un aviso con el botón **«Achicar fotos del listado»** en `/admin/productos` (lo hace de una vez, la foto de antes queda como foto grande). Código: `src/lib/image.ts` (`thumbnailOf`), `src/data/products.ts` (`saveProduct`, `optimizeImages`, `fetchGallery`).
+- [x] **Comprar sin cuenta (APAGADO por ahora).** Está hecho pero desactivado: `guestCheckout: false` en `src/data/store.ts`, así que el checkout sigue pidiendo ingresar. Para encenderlo: activar «Anónimo» en Authentication, activar «Hacer cumplir» de App Check (SEGURIDAD.md) y poner `guestCheckout: true`. Qué hace encendido: el checkout ya no exige ingresar: si no hay sesión, abre una de invitada/o (**Authentication anónima** de Firebase) y el pedido queda a su nombre. La persona lo ve en `/pedido/<id>` desde ese dispositivo; si después crea una cuenta (correo o Google), la cuenta **conserva la sesión y los pedidos** y aparecen en «Mis pedidos». «Mi cuenta» y `/admin` siguen pidiendo una cuenta de verdad. Código: `src/store/auth.ts` (`signInGuest`, `member`), `src/pages/Checkout.tsx`, `src/App.tsx`.
+- [x] **Aviso de pedidos pendientes.** En `/admin/pedidos`, un cartel «N pedidos pendientes de pago» con botón «Ver pendientes», y una insignia con el número en la pestaña «Pedidos» de todo el panel (se cuenta con una consulta liviana, sin bajar los pedidos). Los pedidos de ejemplo no cuentan. Código: `src/store/pendingOrders.ts`.
+- [x] **Foto del color elegido.** En el formulario de producto, cada foto (la principal y las extra) puede indicar **qué color muestra**. En la ficha, al elegir ese color la galería se mueve a esa foto; los colores sin foto propia no mueven nada. Código: `ProductGallery.tsx` (prop `color`), `ProductForm.tsx` (`PhotoColor`).
+- [x] **«Avisame cuando vuelva».** En la ficha, si la medida y el color elegidos están agotados, aparece un botón que abre WhatsApp al local con el producto, la medida y el color ya escritos. No guarda nada en la base: el aviso llega por WhatsApp.
+- [x] **Tests, ESLint y verificación automática.** `npm test` (Vitest: precio, descuento, stock, carrito, teléfonos), `npm run lint` (ESLint con `typescript-eslint` y `react-hooks`), `npm run check` (todo junto, con el build) y `.github/workflows/ci.yml`, que corre lint + tests + build en cada push y pull request.
+- [x] **Sin copias de la lógica.** Precio, stock y descripción corta viven en `src/lib/catalog.ts` (sin Firebase ni React) y `scripts/prerender.mjs` las usa compilándolas con esbuild: la tienda y la vista previa de WhatsApp no pueden mostrar precios distintos. Carrito y checkout comparten `src/lib/cartLines.ts` (la regla del tope de stock estaba dos veces).
+- [x] **Panel de administración con carga diferida.** `/admin/*` se descarga solo al entrar (`React.lazy`). Si tras publicar una versión nueva una pestaña vieja pide un archivo que ya no existe, se recarga sola una vez (`src/lib/lazyRoute.ts`).
+
 **Cómo se mueve el stock (importante):** el stock **se descuenta cuando marcás el pedido como «Pagado»** y **vuelve si después lo cancelás**. Un pedido «Pendiente de pago» **no reserva** unidades. El checkout vuelve a leer el stock justo antes de crear el pedido, pero dos personas pueden pedir lo último al mismo tiempo. Reservar al crear el pedido necesita Cloud Functions (plan Blaze): queda anotado abajo.
 
 ---
 
 ## Probar antes de publicar (lo tenés que hacer vos)
+
+**Para esta tanda (miniaturas, compra sin cuenta, foto por color):**
+
+- [ ] *(Solo si decidís encender la compra sin cuenta)* Firebase → Authentication → Método de acceso → **Anónimo** → Habilitar, y `guestCheckout: true` en `src/data/store.ts`. Hasta entonces no hace falta nada.
+- [ ] **Publicar las reglas de nuevo** (`firestore.rules`): ahora aceptan `fullImage`, `imageColor` y las fotos `products/{id}/photos/main` con su `color`. Sin esto no se puede guardar un producto con foto subida.
+- [ ] **Achicar las fotos que ya cargaste:** `/admin/productos` → cartel «tienen la foto entera…» → «Achicar fotos del listado». Después abrí la tienda con DevTools → Network y mirá cuánto baja Firestore (la revisión estimaba ~6 MB por visita con 30 productos).
+- [ ] **Hacer un pedido** con una cuenta (checkout pide ingresar): ¿aparece en `/admin/pedidos` con el cartel y la insignia de pendientes?
+- [ ] **Foto por color:** editá un producto, indicá el color de la principal y de una extra, guardá; en la ficha, tocá cada color: ¿se mueve la foto?
+- [ ] **«Avisame cuando vuelva»:** en un producto con una combinación en 0, ¿abre WhatsApp con el mensaje bien armado?
+- [ ] **Primera corrida de la verificación automática:** al subir esta tanda, mirá la pestaña «Actions» de GitHub: tiene que quedar en verde. Ojo: usa Node 24 (lo pide Firebase 13).
+
+**De las tandas anteriores:**
 
 Nada de esto pude probarlo contra tu Firebase real. La lógica de stock está probada con casos de ejemplo y el proyecto compila, pero las reglas y las transacciones solo se prueban en tu proyecto.
 
@@ -56,7 +77,9 @@ Nada de esto pude probarlo contra tu Firebase real. La lógica de stock está pr
 
 ## Para después
 
-- [ ] **Revisión de código** (`REVISION_CODIGO.md`): lo más importante es achicar las fotos del listado (miniaturas), agregar tests/ESLint/CI y sacar la copia de la lógica de precio de `scripts/prerender.mjs`.
+- [ ] **Revisión de código** (`REVISION_CODIGO.md`): lo importante de la primera tanda está hecho (miniaturas, tests/ESLint/CI, lógica de precio sin copias, lógica de carrito compartida). Quedan los puntos «Conviene» y «Menor» que ahí se marcan como pendientes (cabeceras de caché, componente de carga/error/vacío, etc.).
+- [ ] **Con plan Blaze:** pasar las fotos a Firebase Storage, confirmar el total del pedido en el servidor y mandar emails de confirmación (ver «Antes de cobrar»).
+- [ ] **Activar «Hacer cumplir» de App Check también para Authentication** antes de encender la compra sin cuenta: cualquiera puede pedir sesiones anónimas desde un script, y App Check es lo que lo frena (`SEGURIDAD.md`, punto 1).
 
 - [ ] Envío con **costo por zona** (hoy es «a coordinar»).
 - [ ] Activar **retiro en el local** (apagado en `src/data/delivery.ts`).
@@ -76,4 +99,7 @@ Nada de esto pude probarlo contra tu Firebase real. La lógica de stock está pr
 - Si **borrás un producto** que tenía pedidos, esos pedidos conservan nombre y precio, pero el stock ya no se puede ajustar.
 - **Contador de pedidos:** cualquier persona con cuenta puede leer cuántos pedidos hubo en total (el número del contador). No ve pedidos ajenos. Si te molesta, se mueve a una Cloud Function con Blaze.
 - Si alguien abre el checkout y nunca crea el pedido, el contador no avanza; si lo crea y falla a mitad, puede quedar un número salteado. No afecta las ventas.
+- **Compra sin cuenta:** el pedido se ve solo en el dispositivo donde se hizo (mientras la persona no borre los datos del navegador). Si los borra, no lo ve más, pero el local sí lo tiene en `/admin/pedidos` y puede escribirle. Las sesiones anónimas **no vencen** solas y se acumulan en Authentication; se pueden limpiar a mano o, con Identity Platform, automáticamente a los 30 días.
+- **Compra sin cuenta + cuenta de Google que ya existía:** si la persona compra como invitada/o y después entra con una cuenta que ya tenía, entra con esa cuenta y el pedido de invitada/o queda en la sesión anterior (no se une).
+- **Fotos de colores:** si sacás un color de la paleta, las fotos que lo mostraban quedan «sin color» al guardar.
 - Los teléfonos se arman para WhatsApp suponiendo Argentina cuando no traen el 54.

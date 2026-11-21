@@ -7,7 +7,7 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Skeleton, StatePanel } from "../../components/ui/StatePanel";
 import { Textarea } from "../../components/ui/Textarea";
-import { MAX_EXTRA_PHOTOS, fetchAdminProduct, fetchExtraPhotos, finalPrice, saveProduct, totalStock, variantKey, type Product } from "../../data/products";
+import { MAX_EXTRA_PHOTOS, fetchAdminProduct, fetchGallery, finalPrice, saveProduct, variantKey, type GalleryPhoto, type Product } from "../../data/products";
 import { ColorDot } from "../../components/ui/ColorDot";
 import { formatPrice } from "../../lib/format";
 import { fileToDataUrl } from "../../lib/image";
@@ -30,9 +30,12 @@ interface FormState {
   /** Solo si el producto viene del formato anterior (un único stock): se muestra para repartirlo. */
   legacyStock?: number;
   description: string;
+  /** Foto principal en grande. Al guardar, el listado recibe una miniatura y esta queda para la ficha. */
   image: string;
-  /** Fotos extra (además de la principal), en orden. Subidas desde el equipo o links https. */
-  extras: string[];
+  /** Color que muestra la foto principal ("" = ninguno en particular). */
+  imageColor: string;
+  /** Fotos extra (además de la principal), en orden, cada una con el color que muestra (opcional). Subidas desde el equipo o links https. */
+  extras: GalleryPhoto[];
   imageAlt: string;
   sizes: string;
   colors: { name: string; hex: string }[];
@@ -50,6 +53,7 @@ const empty: FormState = {
   stockBy: {},
   description: "",
   image: "",
+  imageColor: "",
   extras: [],
   imageAlt: "",
   sizes: "",
@@ -57,7 +61,7 @@ const empty: FormState = {
   active: true,
 };
 
-const fromProduct = (p: Product, extras: string[]): FormState => ({
+const fromProduct = (p: Product, gallery: { main: string; extras: GalleryPhoto[] }): FormState => ({
   name: p.name,
   brand: p.brand,
   category: p.category,
@@ -67,8 +71,9 @@ const fromProduct = (p: Product, extras: string[]): FormState => ({
   stockBy: Object.fromEntries(Object.entries(p.stockBy ?? {}).map(([k, n]) => [k, String(n)])),
   legacyStock: p.stockBy === undefined ? p.stock : undefined,
   description: p.description,
-  image: p.image,
-  extras,
+  image: gallery.main,
+  imageColor: p.imageColor ?? "",
+  extras: gallery.extras,
   imageAlt: p.imageAlt,
   sizes: p.sizes.join(", "),
   colors: p.colors.map((c) => ({ ...c })),
@@ -96,7 +101,7 @@ function validate(f: FormState): Errors {
   if (f.trackStock && combos(f).some((c) => !validUnits(f.stockBy[c.key]))) e.stock = "Revisá el stock: tienen que ser números enteros, 0 o más.";
   if (!f.image) e.image = "Agregá una foto: subila o pegá su dirección.";
   else if (!isSafeImageSrc(f.image)) e.image = "La dirección tiene que empezar con https:// (o subí la foto desde tu equipo).";
-  if (f.extras.length > MAX_EXTRA_PHOTOS || f.extras.some((x) => !isSafeImageSrc(x))) e.extras = `Hasta ${MAX_EXTRA_PHOTOS} fotos más, subidas desde tu equipo o con una dirección https://.`;
+  if (f.extras.length > MAX_EXTRA_PHOTOS || f.extras.some((x) => !isSafeImageSrc(x.src))) e.extras = `Hasta ${MAX_EXTRA_PHOTOS} fotos más, subidas desde tu equipo o con una dirección https://.`;
   const sizes = parseSizes(f.sizes);
   if (sizes.length === 0) e.sizes = "Agregá al menos una medida.";
   else if (sizes.length > LIMITS.sizes || sizes.some((s) => s.length > LIMITS.size)) e.sizes = `Hasta ${LIMITS.sizes} medidas de ${LIMITS.size} letras como máximo.`;
@@ -107,11 +112,11 @@ function validate(f: FormState): Errors {
 
 export default function ProductForm() {
   const { id } = useParams();
-  // Las fotos extra viven aparte del producto: se piden junto con él.
+  // La foto grande y las extra viven aparte del producto (el listado solo lleva la miniatura): se piden junto con él.
   const { state, retry } = useAsync(async () => {
     if (!id) return undefined;
     const product = await fetchAdminProduct(id);
-    return product ? { product, extras: await fetchExtraPhotos(product) } : null;
+    return product ? { product, gallery: await fetchGallery(product) } : null;
   }, [id]);
 
   const back = (
@@ -156,7 +161,7 @@ export default function ProductForm() {
   return (
     <div className="space-y-4">
       {back}
-      <Editor id={id} initial={state.data ? fromProduct(state.data.product, state.data.extras) : { ...empty, category: useCategories.getState().list[0]?.slug ?? "" }} />
+      <Editor id={id} initial={state.data ? fromProduct(state.data.product, state.data.gallery) : { ...empty, category: useCategories.getState().list[0]?.slug ?? "" }} />
     </div>
   );
 }
@@ -205,9 +210,9 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
     const room = MAX_EXTRA_PHOTOS - form.extras.length;
     setExtraBusy(true);
     setExtraError(files.length > room ? `Entran ${room} más: se tomaron las primeras ${room}.` : "");
-    const added: string[] = [];
+    const added: GalleryPhoto[] = [];
     try {
-      for (const file of files.slice(0, room)) added.push(await fileToDataUrl(file));
+      for (const file of files.slice(0, room)) added.push({ src: await fileToDataUrl(file) });
     } catch {
       setExtraError("No pudimos leer alguna de esas imágenes. Probá con otras (JPG o PNG).");
     } finally {
@@ -216,13 +221,15 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
     }
   };
   const removeExtra = (i: number) => setForm((f) => ({ ...f, extras: f.extras.filter((_, k) => k !== i) }));
-  // La extra pasa a ser la principal y la principal ocupa su lugar.
+  const setExtraColor = (i: number, color: string) =>
+    setForm((f) => ({ ...f, extras: f.extras.map((x, k) => (k === i ? { src: x.src, ...(color ? { color } : {}) } : x)) }));
+  // La extra pasa a ser la principal y la principal ocupa su lugar (cada una se lleva su color).
   const makeMain = (i: number) =>
     setForm((f) => {
       const next = [...f.extras];
-      if (f.image) next[i] = f.image;
+      if (f.image) next[i] = { src: f.image, ...(f.imageColor ? { color: f.imageColor } : {}) };
       else next.splice(i, 1); // sin principal todavía: la extra simplemente sube de lugar
-      return { ...f, image: f.extras[i], extras: next };
+      return { ...f, image: f.extras[i].src, imageColor: f.extras[i].color ?? "", extras: next };
     });
 
   const submit = async (e: FormEvent) => {
@@ -236,6 +243,9 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
     }
     setSaving(true);
     setFailed(false);
+    // Si se sacó un color de la paleta, las fotos que lo mostraban quedan sin color en vez de guardar uno que ya no existe.
+    const colors = form.colors.filter((c) => c.name.trim()).map((c) => ({ name: c.name.trim(), hex: c.hex }));
+    const known = (name?: string) => (name && colors.some((c) => c.name === name) ? name : undefined);
     try {
       await saveProduct(
         {
@@ -248,14 +258,15 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
           stock: undefined,
           stockBy: form.trackStock ? Object.fromEntries(combos(form).map((c) => [c.key, cellUnits(form.stockBy[c.key])])) : undefined,
           image: form.image,
+          imageColor: known(form.imageColor),
           imageAlt: form.imageAlt.trim() || form.name.trim(),
           description: form.description.trim(),
           sizes: parseSizes(form.sizes),
-          colors: form.colors.filter((c) => c.name.trim()).map((c) => ({ name: c.name.trim(), hex: c.hex })),
+          colors,
           active: form.active,
         },
         id,
-        form.extras,
+        form.extras.map((x) => ({ src: x.src, ...(known(x.color) ? { color: x.color } : {}) })),
       );
       show(id ? "Producto actualizado" : "Producto creado");
       navigate("/admin/productos");
@@ -293,18 +304,20 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
             </p>
           )}
           <Input label="O pegá la dirección de la foto principal" type="url" inputMode="url" placeholder="https://…" value={urlValue} error={errors.image} onChange={(e) => set("image", e.target.value.trim())} />
+          <PhotoColor value={form.imageColor} colors={form.colors} label="Color que muestra la foto principal" onChange={(v) => set("imageColor", v)} />
           <Input label="Descripción de la foto" maxLength={LIMITS.imageAlt} hint="Para personas que no la ven. Si la dejás vacía se usa el nombre." value={form.imageAlt} onChange={(e) => set("imageAlt", e.target.value)} />
 
           <div className="space-y-3 border-t border-line pt-4">
             <p className="text-sm font-medium">
               Más fotos ({form.extras.length} de {MAX_EXTRA_PHOTOS})
             </p>
-            <p className="text-sm text-muted">Se ven en la ficha del producto. La principal es la que aparece en la tienda y al compartir.</p>
+            <p className="text-sm text-muted">Se ven en la ficha del producto. La principal es la que aparece en la tienda (achicada) y al compartir. Si indicás el color de una foto, la ficha la muestra cuando la persona elige ese color.</p>
             {form.extras.length > 0 && (
               <ul className="grid grid-cols-2 gap-3 md:grid-cols-1">
-                {form.extras.map((src, i) => (
+                {form.extras.map((x, i) => (
                   <li key={i} className="space-y-2">
-                    <img src={src} alt={`Foto extra ${i + 1}`} className="aspect-4/3 w-full rounded-control border border-line object-cover" />
+                    <img src={x.src} alt={`Foto extra ${i + 1}`} className="aspect-4/3 w-full rounded-control border border-line object-cover" />
+                    <PhotoColor value={x.color ?? ""} colors={form.colors} label={`Color que muestra la foto extra ${i + 1}`} onChange={(v) => setExtraColor(i, v)} />
                     <div className="flex flex-col gap-1">
                       <Button variant="secondary" aria-label={`Usar la foto extra ${i + 1} como principal`} onClick={() => makeMain(i)}>
                         Hacer principal
@@ -411,6 +424,22 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
         </LinkButton>
       </div>
     </form>
+  );
+}
+
+/** Elige a qué color de la paleta corresponde una foto (opcional). */
+function PhotoColor({ value, colors, label, onChange }: { value: string; colors: { name: string; hex: string }[]; label: string; onChange: (v: string) => void }) {
+  const names = colors.map((c) => c.name.trim()).filter(Boolean);
+  if (names.length === 0) return null;
+  return (
+    <Select label={label} value={names.includes(value) ? value : ""} onChange={(e) => onChange(e.target.value)}>
+      <option value="">Ninguno en particular</option>
+      {names.map((n) => (
+        <option key={n} value={n}>
+          {n}
+        </option>
+      ))}
+    </Select>
   );
 }
 

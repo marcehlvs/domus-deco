@@ -24,7 +24,7 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const { theme, toggle } = useTheme();
   const cartCount = useCart(selectCount);
-  const user = useAuth((s) => s.user);
+  const member = useAuth((s) => s.member);
   const isAdmin = useAuth((s) => s.isAdmin);
   // «Admin» aparece solo para cuentas de administración (y en desarrollo sin Firebase).
   const links = isAdmin || (import.meta.env.DEV && !db) ? [...baseLinks, { to: "/admin", label: "Admin" }] : baseLinks;
@@ -66,7 +66,7 @@ export default function Header() {
         >
           {theme === "dark" ? <Sun aria-hidden className="size-5" /> : <Moon aria-hidden className="size-5" />}
         </button>
-        <Link to={user ? "/cuenta" : "/ingresar"} className={iconBtn} aria-label={user ? "Mi cuenta" : "Ingresar"}>
+        <Link to={member ? "/cuenta" : "/ingresar"} className={iconBtn} aria-label={member ? "Mi cuenta" : "Ingresar"}>
           <User aria-hidden className="size-5" />
         </Link>
         <Link to="/carrito" className={iconBtn} aria-label={`Carrito, ${cartCount} productos`}>

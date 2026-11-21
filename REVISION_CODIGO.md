@@ -6,6 +6,21 @@ Resumen: el código está ordenado y casi no tiene código muerto (todos los arc
 
 ---
 
+## Estado (21/11/2026, tanda siguiente)
+
+| Punto | Estado |
+|---|---|
+| 1. Fotos completas en el listado | **Hecho** (miniatura de ~480 px en `image`, foto grande aparte; botón «Achicar fotos del listado» para los productos ya cargados). `prerender.mjs` sigue leyendo el catálogo completo en cada `npm run build`, pero ahora son miniaturas (y lee la foto grande solo para armar la imagen de cada producto). |
+| 2. Tests, ESLint y verificación automática | **Hecho** (Vitest, ESLint, `.github/workflows/ci.yml`). ESLint deja **5 avisos** (no errores) de dependencias de `useEffect`/`useMemo` en código que no toqué: `Toast.tsx`, `useAsync.ts`, `Cart.tsx`, `Dashboard.tsx`. El `eslint-disable` de `FiltersModal.tsx` ahora sí tiene efecto, así que ese caso no aparece: conviene mirarlo igual. |
+| 3. Lógica de precio copiada en `prerender.mjs` | **Hecho** (`src/lib/catalog.ts`, compilado con esbuild desde el script; un test impide que `catalog.ts` importe Firebase o React). |
+| 4. Un solo paquete de JavaScript | **Hecho a medias**: `/admin/*` carga bajo demanda. Medido con `npm run build`: el paquete de entrada pasó de 1.063 kB a **1.020 kB** (330 → **318 kB** comprimido). El panel pesaba **~54 kB**: poco. El grueso del paquete no es el panel, y **no lo medí por librería** (sospecho de Firebase, pero es una sospecha); si querés bajarlo de verdad, el siguiente paso es medirlo (visualizador de paquetes de Rollup) antes de decidir. |
+| 5. Cabeceras de caché en Hosting | Pendiente |
+| 6. Lógica repetida entre pantallas | **Carrito/checkout: hecho** (`src/lib/cartLines.ts`, con tests). Pendiente: bloque cargando/error/vacío, `Input`/`Select`, `stockSheet`. |
+| 7, 8, 9 | Pendientes |
+| Menor | `MotionConfig` repetido: hecho en el commit anterior. El resto, pendiente. |
+
+---
+
 ## Importante
 
 ### 1. Cada visita descarga todas las fotos completas

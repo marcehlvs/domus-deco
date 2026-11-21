@@ -1,131 +1,16 @@
 import { LIMITS, isHexColor, isSafeImageSrc } from "../lib/validate";
-import { collection, deleteDoc, doc, getDocs, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { slugify } from "../lib/slug";
+import { thumbnailOf } from "../lib/image";
+import { MAX_EXTRA_PHOTOS, applyUnits, type GalleryPhoto, type Line, type Product } from "../lib/catalog";
 
-export interface Swatch {
-  name: string;
-  hex: string;
-}
+// Las reglas del catálogo viven en lib/catalog.ts (sin Firebase, así las usan también los tests y el script de vistas previas).
+// Se vuelven a exportar acá para que el resto de la app siga importando todo de «data/products».
+export * from "../lib/catalog";
 
-export interface Product {
-  id: string;
-  slug: string;
-  name: string;
-  brand: string;
-  category: string;
-  /** Precio de lista, sin descuento. Lo que se cobra sale de `finalPrice`. */
-  price: number;
-  /** Descuento en porcentaje (1 a 90). Sin valor = sin descuento. */
-  discount?: number;
-  /** Foto principal: la del listado, el carrito y las vistas previas al compartir. */
-  image: string;
-  imageAlt: string;
-  /**
-   * Cuántas fotos extra tiene (además de `image`). Viven aparte, en products/{id}/photos, para que el listado de la tienda
-   * no cargue 5 fotos por producto: solo la ficha y el panel las piden (ver `fetchExtraPhotos`).
-   */
-  extraPhotos?: number;
-  description: string;
-  sizes: string[];
-  colors: Swatch[];
-  /**
-   * Unidades disponibles de todo el producto (stock compartido, el formato anterior).
-   * Sin valor = no se controla el stock. Si hay `stockBy`, manda `stockBy` y este campo no se usa.
-   */
-  stock?: number;
-  /**
-   * Stock por medida y color: la clave es «medida|color» (ver `variantKey`) y el valor, las unidades.
-   * Una combinación que falta cuenta como 0. Sin este campo, el stock es el compartido de `stock`.
-   */
-  stockBy?: Record<string, number>;
-  /** false = oculto en la tienda. Sin valor se considera activo. */
-  active?: boolean;
-  /** true = cargado desde el panel de administración (los de muestra viven en el código). */
-  custom?: boolean;
-}
-
-export const LOW_STOCK = 3;
-/** Fotos extra por producto (con la principal son 5). */
-export const MAX_EXTRA_PHOTOS = 4;
-
-// ---------- Descuento ----------
-export const hasDiscount = (p: Pick<Product, "discount">) => p.discount !== undefined && p.discount > 0;
-/** Precio que paga la persona: el de lista menos el descuento, en pesos enteros. Es el que va al carrito y al pedido. */
-export const finalPrice = (p: Pick<Product, "price" | "discount">) => (hasDiscount(p) ? Math.round((p.price * (100 - p.discount!)) / 100) : p.price);
-
-// ---------- Stock por medida y color ----------
-/** Clave de una combinación en `stockBy`. El «|» se reemplaza para que no se confunda con el separador. */
-export const variantKey = (size: string, color: string) => `${size.replace(/\|/g, "/")}|${color.replace(/\|/g, "/")}`;
-
-/** Unidades de una medida y color. undefined = sin control de stock. */
-export function unitsFor(p: Product, size: string, color: string): number | undefined {
-  return p.stockBy ? (p.stockBy[variantKey(size, color)] ?? 0) : p.stock;
-}
-
-/** Unidades de todo el producto (suma de sus combinaciones). undefined = sin control de stock. */
-export function totalStock(p: Product): number | undefined {
-  if (!p.stockBy) return p.stock;
-  let n = 0;
-  for (const s of p.sizes) for (const c of p.colors) n += p.stockBy[variantKey(s, c.name)] ?? 0;
-  return n;
-}
-
-export const isSoldOut = (p: Product) => {
-  const t = totalStock(p);
-  return t !== undefined && t <= 0;
-};
-export const isLowStock = (p: Product) => {
-  const t = totalStock(p);
-  return t !== undefined && t > 0 && t <= LOW_STOCK;
-};
-export const isVariantSoldOut = (p: Product, size: string, color: string) => {
-  const u = unitsFor(p, size, color);
-  return u !== undefined && u <= 0;
-};
-
-interface Line {
-  productId: string;
-  size: string;
-  color: string;
-  qty: number;
-}
-
-/** Unidades que ya hay en un carrito o pedido contra el mismo tope: la misma medida y color si el stock es por combinación; todo el producto si es compartido. */
-export function claimed(p: Product, size: string, color: string, lines: Line[]) {
-  const key = variantKey(size, color);
-  return lines
-    .filter((l) => l.productId === p.id && (!p.stockBy || variantKey(l.size, l.color) === key))
-    .reduce((n, l) => n + l.qty, 0);
-}
-
-/**
- * Stock que queda después de sumar (sign = 1) o descontar (sign = -1) las unidades de un pedido.
- * null = el producto no controla stock. `short` = faltaban unidades: se deja en 0 y hay que avisar.
- * Función pura: la usan el panel de pedidos (Firestore y modo demostración).
- */
-export function applyUnits(
-  p: Product,
-  lines: { size: string; color: string; qty: number }[],
-  sign: 1 | -1,
-): { patch: Pick<Product, "stock" | "stockBy">; short: boolean } | null {
-  if (p.stockBy) {
-    const next = { ...p.stockBy };
-    let short = false;
-    for (const l of lines) {
-      const key = variantKey(l.size, l.color);
-      const value = (next[key] ?? 0) + sign * l.qty;
-      if (value < 0) short = true;
-      next[key] = Math.max(0, value);
-    }
-    return { patch: { stockBy: next }, short };
-  }
-  if (p.stock !== undefined) {
-    const value = p.stock + sign * lines.reduce((n, l) => n + l.qty, 0);
-    return { patch: { stock: Math.max(0, value) }, short: value < 0 };
-  }
-  return null;
-}
+/** Una foto subida desde el equipo que pesa menos que esto ya sirve de miniatura: no se guarda una copia grande aparte. */
+const SMALL_IMAGE_CHARS = 60_000;
 
 // ---------- Dónde se guardan los productos ----------
 // Con Firebase configurado (.env.local) viven en Firestore y los ve cualquier cliente.
@@ -136,15 +21,27 @@ interface Backend {
   save(product: Product): Promise<void>;
   setActive(id: string, active: boolean): Promise<void>;
   remove(id: string): Promise<void>;
+  /** Foto grande principal (products/{id}/photos/main). null = no tiene: la única foto es `image`. */
+  main(id: string): Promise<string | null>;
+  /** Guarda la foto grande principal; null la borra. */
+  saveMain(id: string, src: string | null): Promise<void>;
   /** Fotos extra del producto, en orden. */
-  photos(id: string): Promise<string[]>;
+  photos(id: string): Promise<GalleryPhoto[]>;
   /** Reemplaza todas las fotos extra del producto por esta lista. */
-  savePhotos(id: string, photos: string[]): Promise<void>;
+  savePhotos(id: string, photos: GalleryPhoto[]): Promise<void>;
 }
 
 export const LEGACY_PRODUCTS_KEY = "domus-products-v1";
 
 const photosKey = (id: string) => `domus-photos-v1:${id}`;
+const mainKey = (id: string) => `domus-main-v1:${id}`;
+
+// Antes las fotos extra eran solo texto; ahora llevan también el color. Se aceptan los dos formatos.
+const toPhoto = (x: unknown): GalleryPhoto | null => {
+  if (typeof x === "string") return x ? { src: x } : null;
+  const o = x as Partial<GalleryPhoto> | null;
+  return o && typeof o.src === "string" && o.src ? { src: o.src, ...(o.color ? { color: o.color } : {}) } : null;
+};
 
 const delay = <T>(value: T) => new Promise<T>((resolve) => setTimeout(() => resolve(value), 350));
 
@@ -171,11 +68,19 @@ const localBackend: Backend = {
     const list = await this.all();
     localStorage.setItem(LEGACY_PRODUCTS_KEY, JSON.stringify(list.filter((p) => p.id !== id)));
     localStorage.removeItem(photosKey(id));
+    localStorage.removeItem(mainKey(id));
+  },
+  async main(id) {
+    return localStorage.getItem(mainKey(id));
+  },
+  async saveMain(id, src) {
+    if (src) localStorage.setItem(mainKey(id), src);
+    else localStorage.removeItem(mainKey(id));
   },
   async photos(id) {
     try {
       const raw = localStorage.getItem(photosKey(id));
-      return raw ? (JSON.parse(raw) as string[]) : [];
+      return raw ? (JSON.parse(raw) as unknown[]).map(toPhoto).filter((x): x is GalleryPhoto => x !== null) : [];
     } catch {
       return [];
     }
@@ -201,6 +106,8 @@ export function productFromData(id: string, x: Partial<Product>): Product {
     discount: x.discount,
     image: x.image ?? "",
     imageAlt: x.imageAlt ?? "",
+    fullImage: x.fullImage,
+    imageColor: x.imageColor,
     extraPhotos: x.extraPhotos,
     description: x.description ?? "",
     sizes: x.sizes ?? [],
@@ -225,21 +132,34 @@ const firestoreBackend: Backend = {
     await updateDoc(doc(db!, "products", id), { active });
   },
   async remove(id) {
-    await firestoreBackend.savePhotos(id, []); // borrar un documento no borra sus subcolecciones: las fotos se sacan aparte
+    // Borrar un documento no borra sus subcolecciones: las fotos se sacan aparte.
+    await firestoreBackend.savePhotos(id, []);
+    await firestoreBackend.saveMain(id, null);
     await deleteDoc(doc(db!, "products", id));
+  },
+  async main(id) {
+    const snap = await getDoc(doc(db!, "products", id, "photos", "main"));
+    return snap.exists() ? String(snap.data().src ?? "") || null : null;
+  },
+  async saveMain(id, src) {
+    const ref = doc(db!, "products", id, "photos", "main");
+    if (src) await setDoc(ref, { src });
+    else await deleteDoc(ref);
   },
   async photos(id) {
     const snap = await getDocs(collection(db!, "products", id, "photos"));
     return snap.docs
+      .filter((d) => d.id !== "main") // la grande principal vive en el mismo lugar, pero no es una foto extra
       .sort((a, b) => Number(a.id) - Number(b.id))
-      .map((d) => String(d.data().src ?? ""))
-      .filter(Boolean);
+      .map((d) => toPhoto(d.data()))
+      .filter((x): x is GalleryPhoto => x !== null);
   },
   async savePhotos(id, photos) {
     const batch = writeBatch(db!);
     for (let n = 1; n <= MAX_EXTRA_PHOTOS; n++) {
       const ref = doc(db!, "products", id, "photos", String(n));
-      if (photos[n - 1]) batch.set(ref, { src: photos[n - 1] });
+      const photo = photos[n - 1];
+      if (photo) batch.set(ref, clean({ src: photo.src, color: photo.color }));
       else batch.delete(ref);
     }
     await batch.commit();
@@ -274,12 +194,19 @@ export const fetchProducts = async (category?: string) =>
   (await cached()).filter((p) => isVisible(p) && (!category || p.category === category));
 /** Catálogo visible sin pasar por la copia de 30 segundos: para confirmar el stock justo antes de crear un pedido. */
 export const fetchProductsFresh = async () => (await fresh()).filter(isVisible);
-/** Fotos extra de un producto (sin la principal). No se piden en el listado: solo la ficha y el panel. */
-export const fetchExtraPhotos = async (p: Pick<Product, "id" | "extraPhotos">) => (p.extraPhotos ? await backend.photos(p.id) : []);
+/**
+ * Las fotos de la ficha: la principal en grande y las extra. No se piden en el listado, solo la ficha y el panel.
+ * Si el producto no tiene foto grande aparte (ni extras), no se lee nada: `image` ya es la única foto.
+ */
+export async function fetchGallery(p: Pick<Product, "id" | "image" | "fullImage" | "extraPhotos">): Promise<{ main: string; extras: GalleryPhoto[] }> {
+  const [main, extras] = await Promise.all([p.fullImage ? backend.main(p.id) : null, p.extraPhotos ? backend.photos(p.id) : []]);
+  return { main: main ?? p.image, extras };
+}
 export const fetchProduct = async (slug: string) => (await cached()).find((p) => p.slug === slug && isVisible(p)) ?? null;
 
 // ---------- Administración ----------
-export type ProductInput = Omit<Product, "id" | "slug" | "custom" | "extraPhotos">;
+/** Lo que manda el formulario. `image` es la foto grande: al guardar se genera la miniatura (ver `saveProduct`). */
+export type ProductInput = Omit<Product, "id" | "slug" | "custom" | "extraPhotos" | "fullImage">;
 
 export const fetchAdminProducts = async () => await fresh();
 export const fetchAdminProduct = async (id: string) => (await fresh()).find((p) => p.id === id) ?? null;
@@ -303,29 +230,48 @@ function assertValid(p: ProductInput) {
     (p.stock === undefined || (Number.isInteger(p.stock) && p.stock >= 0)) &&
     (p.stockBy === undefined || Object.values(p.stockBy).every((n) => Number.isInteger(n) && n >= 0 && n < 100000)) &&
     isSafeImageSrc(p.image) &&
+    (p.imageColor === undefined || p.colors.some((c) => c.name === p.imageColor)) &&
     p.sizes.length > 0 && p.sizes.length <= LIMITS.sizes &&
     p.colors.length > 0 && p.colors.length <= LIMITS.colors && p.colors.every((c) => isHexColor(c.hex));
   if (!ok) throw new Error("invalid-product");
 }
 
 // Las fotos extra: hasta MAX_EXTRA_PHOTOS, cada una subida desde el equipo o un link https.
-function assertPhotos(photos: string[]) {
-  if (photos.length > MAX_EXTRA_PHOTOS || !photos.every(isSafeImageSrc)) throw new Error("invalid-photos");
+function assertPhotos(photos: GalleryPhoto[], colors: { name: string }[]) {
+  const ok =
+    photos.length <= MAX_EXTRA_PHOTOS &&
+    photos.every((x) => isSafeImageSrc(x.src) && (x.color === undefined || colors.some((c) => c.name === x.color)));
+  if (!ok) throw new Error("invalid-photos");
+}
+
+/**
+ * Qué se guarda como `image` y como foto grande. Una foto subida desde el equipo (data:) se achica a una miniatura para el listado
+ * y la grande queda aparte; un link https o una foto que ya es chica se guardan tal cual, sin foto grande aparte.
+ */
+async function splitImage(image: string): Promise<{ image: string; full: string | null }> {
+  if (!image.startsWith("data:") || image.length <= SMALL_IMAGE_CHARS) return { image, full: null };
+  const thumb = await thumbnailOf(image);
+  return thumb.length < image.length ? { image: thumb, full: image } : { image, full: null };
 }
 
 /** `photos` = fotos extra: si se pasa, reemplaza a las que tenía; si no, se dejan como están. */
-export async function saveProduct(input: ProductInput, id?: string, photos?: string[]): Promise<Product> {
+export async function saveProduct(input: ProductInput, id?: string, photos?: GalleryPhoto[]): Promise<Product> {
   assertValid(input);
-  if (photos) assertPhotos(photos);
+  if (photos) assertPhotos(photos, input.colors);
+  const { image, full } = await splitImage(input.image);
   const all = await fresh();
   if (id) {
     const current = all.find((p) => p.id === id);
     if (!current) throw new Error("not-found");
     // Primero las fotos y después el producto: así el producto nunca apunta a fotos que no se guardaron.
+    if (full) await backend.saveMain(current.id, full);
+    else if (current.fullImage) await backend.saveMain(current.id, null);
     if (photos) await backend.savePhotos(current.id, photos);
     const updated: Product = {
       ...current,
       ...input,
+      image,
+      fullImage: full ? true : undefined,
       extraPhotos: photos ? photos.length || undefined : current.extraPhotos,
       id: current.id,
       slug: current.slug,
@@ -339,7 +285,8 @@ export async function saveProduct(input: ProductInput, id?: string, photos?: str
   const base = slugify(input.name) || "producto";
   let slug = base;
   for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
-  const created: Product = { ...input, extraPhotos: photos?.length || undefined, id: slug, slug, custom: true };
+  const created: Product = { ...input, image, fullImage: full ? true : undefined, extraPhotos: photos?.length || undefined, id: slug, slug, custom: true };
+  if (full) await backend.saveMain(slug, full);
   if (photos?.length) await backend.savePhotos(slug, photos);
   await backend.save(created);
   cache = null;
@@ -358,12 +305,35 @@ export async function removeProduct(id: string) {
 
 /** Sube un producto que ya existía (por ejemplo, el cargado en modo demostración) conservando su dirección. */
 export async function importProduct(p: Product) {
-  const { id: _id, slug: _slug, custom: _custom, ...input } = p;
+  const { id: _id, slug: _slug, custom: _custom, fullImage: _full, extraPhotos: _extra, ...input } = p;
   assertValid(input);
-  // Si el producto cargado en el navegador tenía fotos extra, se suben con él.
+  // Si el producto cargado en el navegador tenía foto grande o fotos extra, se suben con él.
+  if (p.fullImage) await backend.saveMain(p.id, await localBackend.main(p.id));
   if (p.extraPhotos) await backend.savePhotos(p.id, await localBackend.photos(p.id));
   await backend.save({ ...p, custom: true });
   cache = null;
+}
+
+/** Productos con una foto subida desde el equipo que todavía viaja entera en el listado (los cargados antes de las miniaturas). */
+export const needsThumbnail = (p: Product) => !p.fullImage && p.image.startsWith("data:") && p.image.length > SMALL_IMAGE_CHARS;
+
+/**
+ * Achica las fotos de los productos que ya estaban cargados: la miniatura pasa a ser `image` y la foto de antes queda como foto grande.
+ * Devuelve cuántos productos se arreglaron. Si uno falla, los anteriores quedan hechos y se vuelve a llamar para seguir.
+ */
+export async function optimizeImages(onProgress?: (done: number, total: number) => void): Promise<number> {
+  const todo = (await fresh()).filter((p) => p.custom && needsThumbnail(p));
+  let done = 0;
+  for (const p of todo) {
+    const { image, full } = await splitImage(p.image);
+    if (full) {
+      await backend.saveMain(p.id, full); // primero la grande, después el producto: así `image` nunca queda sin su original
+      await backend.save({ ...p, image, fullImage: true });
+    }
+    onProgress?.(++done, todo.length);
+  }
+  cache = null;
+  return done;
 }
 
 /**

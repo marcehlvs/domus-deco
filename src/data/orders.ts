@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getCountFromServer,
   getDoc,
   getDocs,
   orderBy,
@@ -80,6 +81,8 @@ interface Backend {
   all(): Promise<Order[]>;
   /** Los pedidos de una persona. */
   mine(uid: string): Promise<Order[]>;
+  /** Cuántos pedidos están «pendiente de pago» (solo administración). */
+  countPending(): Promise<number>;
   get(id: string): Promise<Order | null>;
   create(input: NewOrder, uid: string): Promise<Order>;
   /** Cambia el estado y ajusta el stock. Devuelve los productos que se quedaron cortos de stock. */
@@ -122,6 +125,7 @@ const nextNumber = (list: Order[]) => list.reduce((n, o) => Math.max(n, o.number
 const localBackend: Backend = {
   all: () => delay(byNewest(read())),
   mine: (uid) => delay(byNewest(read().filter((o) => o.userId === uid))),
+  countPending: async () => read().filter((o) => o.status === "pendiente" && !o.demo).length,
   get: (id) => delay(read().find((o) => o.id === id) ?? null),
   async create(input, uid) {
     await delay(null);
@@ -169,6 +173,11 @@ const firestoreBackend: Backend = {
     // Sin orderBy: con «where» + «orderBy» en campos distintos Firestore pide un índice. Se ordena acá.
     const snap = await getDocs(query(collection(db!, "orders"), where("userId", "==", uid)));
     return byNewest(snap.docs.map(fromDoc));
+  },
+  async countPending() {
+    // Una consulta de conteo: no descarga los pedidos y alcanza con el índice automático del campo «status».
+    const snap = await getCountFromServer(query(collection(db!, "orders"), where("status", "==", "pendiente")));
+    return snap.data().count;
   },
   async get(id) {
     const snap = await getDoc(doc(db!, "orders", id));
@@ -237,6 +246,7 @@ const backend: Backend = db ? firestoreBackend : localBackend;
 export const fetchOrders = () => backend.all();
 export const fetchMyOrders = (uid: string) => backend.mine(uid);
 export const fetchOrder = (id: string) => backend.get(id);
+export const countPendingOrders = () => backend.countPending();
 export const createOrder = (input: NewOrder, uid: string) => backend.create(input, uid);
 export const setOrderStatus = (id: string, status: OrderStatus) => backend.setStatus(id, status);
 

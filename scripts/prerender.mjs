@@ -11,6 +11,7 @@
 // reemplazar por una Cloud Function que lo haga en el momento.)
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { build } from "esbuild";
 import { loadEnv } from "vite";
 
 const DIST = path.resolve("dist");
@@ -28,26 +29,13 @@ if (!siteUrl) {
   process.exit(0);
 }
 
-// ---------- Copias de la lógica de src/data/products.ts y src/lib/pageMeta.ts: si cambian allá, cambian acá ----------
+// ---------- Reglas del catálogo: se usan las MISMAS que la tienda (src/lib/catalog.ts), compiladas al vuelo con esbuild ----------
+// Así el precio y el stock de la vista previa no pueden diferir del de la tienda. catalog.ts no importa nada de Firebase ni de React.
+async function loadCatalog() {
+  const out = await build({ entryPoints: [path.resolve("src/lib/catalog.ts")], bundle: true, format: "esm", platform: "node", write: false, logLevel: "silent" });
+  return import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString("base64")}`);
+}
 const ars = new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
-const hasDiscount = (p) => p.discount !== undefined && p.discount > 0;
-const finalPrice = (p) => (hasDiscount(p) ? Math.round((p.price * (100 - p.discount)) / 100) : p.price);
-const variantKey = (size, color) => `${size.replace(/\|/g, "/")}|${color.replace(/\|/g, "/")}`;
-function totalStock(p) {
-  if (!p.stockBy) return p.stock;
-  let n = 0;
-  for (const s of p.sizes) for (const c of p.colors) n += p.stockBy[variantKey(s, c.name)] ?? 0;
-  return n;
-}
-const clip = (s, max) => (s.length <= max ? s : `${s.slice(0, max - 1).replace(/\s+\S*$/, "")}…`);
-function describe(p) {
-  const own = p.description.replace(/\s+/g, " ").trim();
-  if (own) return clip(own, 160);
-  const parts = [];
-  if (p.sizes.length) parts.push(`Medidas: ${p.sizes.join(", ")}.`);
-  if (p.colors.length) parts.push(`Colores: ${p.colors.map((c) => c.name).join(", ")}.`);
-  return clip(parts.join(" ") || `${p.name} en ${STORE}.`, 160);
-}
 
 // ---------- Firestore (API REST, sin sesión: las reglas dejan leer los productos a cualquiera) ----------
 function fromValue(v) {
@@ -79,6 +67,7 @@ async function fetchProducts() {
         price: x.price ?? 0,
         discount: x.discount,
         image: x.image ?? "",
+        fullImage: x.fullImage === true,
         imageAlt: x.imageAlt ?? "",
         description: x.description ?? "",
         sizes: x.sizes ?? [],
@@ -91,6 +80,19 @@ async function fetchProducts() {
     token = json.nextPageToken ?? "";
   } while (token);
   return out;
+}
+
+/** La foto grande de un producto con miniatura en el listado (products/{id}/photos/main). null si no se pudo leer: se usa la miniatura. */
+async function fetchMainPhoto(id) {
+  try {
+    const qs = new URLSearchParams({ key: apiKey ?? "" });
+    const res = await fetch(`${FIRESTORE}/v1/projects/${projectId}/databases/(default)/documents/products/${encodeURIComponent(id)}/photos/main?${qs}`);
+    if (!res.ok) return null;
+    const json = await res.json();
+    return typeof json.fields?.src?.stringValue === "string" ? json.fields.src.stringValue : null;
+  } catch {
+    return null;
+  }
 }
 
 // ---------- HTML ----------
@@ -127,6 +129,8 @@ async function main() {
     console.warn("[prerender] dist/index.html ya tiene las vistas previas (¿se corrió dos veces?). Corré «npm run build» de nuevo.");
     return;
   }
+  const { finalPrice, hasDiscount, totalStock, describeProduct } = await loadCatalog();
+  const describe = (p) => describeProduct(p, STORE);
   const defaultImage = `${siteUrl}/og-default.jpg`;
   const urls = [`${siteUrl}/`, `${siteUrl}/tienda`];
   let made = 0;
@@ -148,14 +152,16 @@ async function main() {
     const price = finalPrice(p);
 
     // Foto: la subida desde el equipo viene embebida (data:) y se guarda como archivo; si es un link https, se usa tal cual.
+    // Si el listado lleva solo la miniatura (fullImage), la vista previa usa la foto grande.
+    const source = p.fullImage ? ((await fetchMainPhoto(p.id)) ?? p.image) : p.image;
     let image = defaultImage;
-    const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(p.image);
+    const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(source);
     if (m) {
       const file = `${p.id}.${m[1] === "jpeg" ? "jpg" : m[1]}`;
       await writeFile(path.join(DIST, "og", file), Buffer.from(m[2], "base64"));
       image = `${siteUrl}/og/${file}`;
-    } else if (/^https:\/\/[^\s"'<>]+$/.test(p.image)) {
-      image = p.image;
+    } else if (/^https:\/\/[^\s"'<>]+$/.test(source)) {
+      image = source;
     }
 
     const title = `${p.name} — ${ars.format(price)}${hasDiscount(p) ? ` (${p.discount}% OFF)` : ""}`;

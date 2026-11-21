@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { DemoOrders } from "../../components/admin/DemoOrders";
 import { OrderStatusBadge } from "../../components/admin/OrderStatusBadge";
@@ -10,6 +10,7 @@ import { deliveryLabels } from "../../data/delivery";
 import { deductsStock, fetchOrders, setOrderStatus, statusLabels, statuses, type Order, type OrderStatus } from "../../data/orders";
 import { formatDay, formatPrice } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
+import { usePendingOrders } from "../../store/pendingOrders";
 import { customerWhatsappLink } from "../../lib/whatsapp";
 import { cn } from "../../lib/cn";
 
@@ -20,6 +21,12 @@ export default function OrdersAdmin() {
   const [failed, setFailed] = useState(false);
   const [short, setShort] = useState<string[]>([]);
   const [changing, setChanging] = useState<string | null>(null);
+
+  // El aviso de «pendientes» del panel se mantiene al día con lo que se ve acá (los de ejemplo no cuentan).
+  const setPending = usePendingOrders((s) => s.set);
+  useEffect(() => {
+    if (state.status === "success") setPending(state.data.filter((o) => !o.demo && (overrides[o.id] ?? o.status) === "pendiente").length);
+  }, [state, overrides, setPending]);
 
   const change = async (order: Order, status: OrderStatus) => {
     setFailed(false);
@@ -74,10 +81,27 @@ export default function OrdersAdmin() {
 
   const shown = filter === "todos" ? orders : orders.filter((o) => o.status === filter);
   const count = (s: OrderStatus) => orders.filter((o) => o.status === s).length;
+  const pending = orders.filter((o) => !o.demo && o.status === "pendiente").length;
 
   return (
     <div className="space-y-5">
       <h2 className="text-2xl">Pedidos</h2>
+
+      {pending > 0 && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-alt p-4">
+          <p>
+            <strong>
+              {pending} {pending === 1 ? "pedido pendiente" : "pedidos pendientes"} de pago.
+            </strong>{" "}
+            <span className="text-muted">Escribile a cada persona por WhatsApp para coordinar el pago.</span>
+          </p>
+          {filter !== "pendiente" && (
+            <Button variant="secondary" onClick={() => setFilter("pendiente")}>
+              Ver pendientes
+            </Button>
+          )}
+        </div>
+      )}
 
       <div role="group" aria-label="Filtrar por estado" className="-mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">
         <Button variant={filter === "todos" ? "primary" : "secondary"} aria-pressed={filter === "todos"} className="shrink-0" onClick={() => setFilter("todos")}>

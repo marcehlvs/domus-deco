@@ -63,6 +63,7 @@ La lista pensaba en apps con servidor propio, base SQL y cookies. Domus Deco es 
 
 - **Encontré:** Firebase ya bloquea los intentos repetidos (devuelve `auth/too-many-requests`, y el mensaje ya estaba traducido). La pantalla de ingreso no frenaba nada.
 - **Hice:** un freno local: después de **5 errores seguidos de contraseña**, la pantalla espera 30 s y duplica el tiempo en cada error siguiente, hasta 5 min. El intento bloqueado **ni siquiera llega a Firebase** (lo comprobé contando los pedidos). Está en `src/lib/throttle.ts` y `src/pages/Login.tsx`.
+- **Compra sin cuenta (21/11/2026, apagada por defecto con `guestCheckout: false` en `src/data/store.ts`):** encendida, el checkout abre una sesión **anónima** de Firebase para quien no ingresó. Es una sesión real (puede crear pedidos), así que un script podría pedirlas en masa: **activá «Hacer cumplir» de App Check en Authentication** cuando las métricas estén limpias. Las reglas de Firestore no cambian: cada sesión solo ve y crea pedidos propios, y no es administradora.
 - **Aclaración honesta:** este freno es de cortesía, no seguridad real (alguien puede borrar el almacenamiento del navegador). La defensa de verdad es la de Firebase más App Check (punto 1).
 - **Te toca (recomendado):** en Firebase → Authentication → Configuración, revisá que esté activa la **protección contra enumeración de correos** y definí una **política de contraseñas** (largo mínimo, etc.). Los nombres de los menús de la consola pueden variar un poco.
 

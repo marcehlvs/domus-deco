@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { Button, LinkButton } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
-import { claimed, fetchProducts, finalPrice, unitsFor } from "../data/products";
+import { fetchProducts, finalPrice } from "../data/products";
+import { cartLines, cartTotal, exceeds, inCartOf, limitOf } from "../lib/cartLines";
 import { formatPrice } from "../lib/format";
 import { useAsync } from "../lib/useAsync";
 import { useCart } from "../store/cart";
@@ -62,20 +63,10 @@ export default function Cart() {
       </div>
     );
 
-  const lines = items.flatMap((item) => {
-    const p = state.data.find((x) => x.id === item.productId);
-    return p ? [{ item, p }] : [];
-  });
-  const total = lines.reduce((sum, { item, p }) => sum + finalPrice(p) * item.qty, 0);
-
-  // El tope es por medida y color (o de todo el producto si todavía tiene el stock compartido).
-  const limitOf = (item: (typeof items)[number], p: (typeof lines)[number]["p"]) => unitsFor(p, item.size, item.color);
-  const inCartOf = (item: (typeof items)[number], p: (typeof lines)[number]["p"]) => claimed(p, item.size, item.color, items);
-  const exceeds = (item: (typeof items)[number], p: (typeof lines)[number]["p"]) => {
-    const limit = limitOf(item, p);
-    return limit !== undefined && inCartOf(item, p) > limit;
-  };
-  const blocked = lines.some(({ item, p }) => exceeds(item, p));
+  // El tope es por medida y color (o de todo el producto si todavía tiene el stock compartido): ver lib/cartLines.ts.
+  const lines = cartLines(items, state.data);
+  const total = cartTotal(lines);
+  const blocked = lines.some(({ item, p }) => exceeds(item, p, items));
 
   return (
     <div className="space-y-6">
@@ -84,7 +75,7 @@ export default function Cart() {
         <ul className="divide-y divide-line border-y border-line">
           {lines.map(({ item, p }) => {
             const limit = limitOf(item, p);
-            const atMax = limit !== undefined && inCartOf(item, p) >= limit;
+            const atMax = limit !== undefined && inCartOf(item, p, items) >= limit;
             return (
             <li key={item.key} className="grid grid-cols-[4.5rem_1fr_auto] gap-4 py-4">
               <img src={p.image} alt="" width={72} height={72} className="size-18 rounded-control object-cover" />
@@ -111,7 +102,7 @@ export default function Cart() {
                     Eliminar
                   </Button>
                 </div>
-                {exceeds(item, p) && (
+                {exceeds(item, p, items) && (
                   <p role="alert" className="mt-2 text-sm text-danger">
                     {limit === 0 ? "Sin stock. Eliminalo para continuar." : `Solo quedan ${limit} en ${item.color}, ${item.size}. Bajá la cantidad para continuar.`}
                   </p>

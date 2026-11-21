@@ -17,7 +17,7 @@ export async function fileToDataUrl(file: File, maxSide = 900, quality = 0.82): 
     ];
     let result = "";
     for (const [side, q] of attempts) {
-      result = render(bitmap, side, q);
+      result = render(bitmap, bitmap.width, bitmap.height, side, q);
       if (result.length <= TARGET_CHARS) return result;
     }
     if (result.length > MAX_CHARS) throw new Error("too-big");
@@ -27,10 +27,10 @@ export async function fileToDataUrl(file: File, maxSide = 900, quality = 0.82): 
   }
 }
 
-function render(bitmap: ImageBitmap, maxSide: number, quality: number) {
-  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
+function render(source: CanvasImageSource, sourceWidth: number, sourceHeight: number, maxSide: number, quality: number) {
+  const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
+  const width = Math.round(sourceWidth * scale);
+  const height = Math.round(sourceHeight * scale);
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -38,6 +38,30 @@ function render(bitmap: ImageBitmap, maxSide: number, quality: number) {
   if (!ctx) throw new Error("no-canvas");
   ctx.fillStyle = "#fff"; // los PNG con transparencia no quedan negros al pasar a JPG
   ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(bitmap, 0, 0, width, height);
+  ctx.drawImage(source, 0, 0, width, height);
   return canvas.toDataURL("image/jpeg", quality);
+}
+
+/** Lado mayor de la miniatura del listado. A 480 px se ve bien en la grilla (hasta 2× en pantallas de alta densidad). */
+export const THUMB_SIDE = 480;
+/** Peso al que apunta la miniatura (en caracteres del data URL, ~37 KB). Una foto normal queda muy por debajo; una muy detallada baja calidad y tamaño hasta entrar. */
+const THUMB_TARGET_CHARS = 50_000;
+
+/** Miniatura (JPG de ~480 px) de una foto que ya está como data URL. Es lo que se guarda en el producto para el listado. */
+export async function thumbnailOf(dataUrl: string, maxSide = THUMB_SIDE): Promise<string> {
+  const img = new Image();
+  img.src = dataUrl;
+  await img.decode();
+  const attempts: [number, number][] = [
+    [maxSide, 0.78],
+    [maxSide, 0.66],
+    [Math.round(maxSide * 0.85), 0.6],
+    [Math.round(maxSide * 0.7), 0.55],
+  ];
+  let result = "";
+  for (const [side, quality] of attempts) {
+    result = render(img, img.naturalWidth, img.naturalHeight, side, quality);
+    if (result.length <= THUMB_TARGET_CHARS) break;
+  }
+  return result;
 }

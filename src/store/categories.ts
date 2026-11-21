@@ -106,7 +106,7 @@ interface CategoriesState {
   importMissing: (items: Category[]) => Promise<void>;
 }
 
-export const useCategories = create<CategoriesState>()((set, get) => {
+export const useCategories = create<CategoriesState>()((set) => {
   // Con Firestore, la lista de arranque es la última que se vio (así no parpadean las de fábrica).
   const initial = db ? readKey(CACHE_KEY) ?? defaultCategories : readKey(LEGACY_CATEGORIES_KEY) ?? defaultCategories;
   const apply = (list: Category[]) => {

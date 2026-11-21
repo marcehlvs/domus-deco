@@ -1,43 +1,59 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { fetchExtraPhotos, type Product } from "../../data/products";
+import { fetchGallery, type GalleryPhoto, type Product } from "../../data/products";
 import { cn } from "../../lib/cn";
 
-type GalleryProduct = Pick<Product, "id" | "image" | "imageAlt" | "extraPhotos">;
+type GalleryProduct = Pick<Product, "id" | "image" | "imageAlt" | "fullImage" | "imageColor" | "extraPhotos">;
 
 const arrow =
   "absolute top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-line bg-bg/90 text-ink backdrop-blur hover:bg-alt disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 /**
- * Fotos del producto: la principal sale al instante y las extra se piden aparte (no viajan en el listado).
+ * Fotos del producto: la principal sale al instante (con la miniatura del listado) y la foto grande y las extra se piden
+ * aparte (no viajan en el listado). Si `color` coincide con el de alguna foto, la galería se mueve a esa foto.
  * En el celular se desliza con el dedo (scroll-snap nativo); también hay flechas, miniaturas y las flechas del teclado.
  */
-export function ProductGallery({ product }: { product: GalleryProduct }) {
-  const [extra, setExtra] = useState<string[]>([]);
+export function ProductGallery({ product, color }: { product: GalleryProduct; color?: string }) {
+  const [photos, setPhotos] = useState<GalleryPhoto[]>([{ src: product.image, color: product.imageColor }]);
   const [index, setIndex] = useState(0);
   const scroller = useRef<HTMLDivElement>(null);
 
+  const { id, image, fullImage, imageColor, extraPhotos } = product;
   useEffect(() => {
     let active = true;
-    setExtra([]);
+    setPhotos([{ src: image, color: imageColor }]);
     setIndex(0);
-    if (product.extraPhotos) fetchExtraPhotos(product).then((list) => active && setExtra(list), () => undefined); // si fallan, queda la principal
+    if (fullImage || extraPhotos)
+      fetchGallery({ id, image, fullImage, extraPhotos }).then(
+        ({ main, extras }) => active && setPhotos([{ src: main, color: imageColor }, ...extras]),
+        () => undefined, // si fallan, queda la principal (la miniatura)
+      );
     return () => {
       active = false;
     };
-  }, [product.id, product.extraPhotos]);
+  }, [id, image, fullImage, imageColor, extraPhotos]);
 
-  const images = [product.image, ...extra];
+  const images = photos.map((x) => x.src);
   const many = images.length > 1;
 
-  const go = (i: number) => {
-    const el = scroller.current;
-    if (!el) return;
-    const next = Math.min(Math.max(i, 0), images.length - 1);
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollTo({ left: next * el.clientWidth, behavior: reduce ? "auto" : "smooth" });
-    setIndex(next);
-  };
+  const count = images.length;
+  const go = useCallback(
+    (i: number) => {
+      const el = scroller.current;
+      if (!el) return;
+      const next = Math.min(Math.max(i, 0), count - 1);
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      el.scrollTo({ left: next * el.clientWidth, behavior: reduce ? "auto" : "smooth" });
+      setIndex(next);
+    },
+    [count],
+  );
+  // Al elegir un color que tiene foto propia, se muestra esa foto. Los colores sin foto dejan la galería como está.
+  useEffect(() => {
+    const i = color ? photos.findIndex((x) => x.color === color) : -1;
+    if (i >= 0) go(i);
+  }, [color, photos, go]);
+
   const onScroll = () => {
     const el = scroller.current;
     if (el && el.clientWidth > 0) setIndex(Math.round(el.scrollLeft / el.clientWidth));

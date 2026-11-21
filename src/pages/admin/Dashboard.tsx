@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarChart } from "../../components/admin/BarChart";
+import { BackupCard } from "../../components/admin/BackupCard";
 import { DemoOrders } from "../../components/admin/DemoOrders";
 import { OrderStatusBadge } from "../../components/admin/OrderStatusBadge";
 import { Button } from "../../components/ui/Button";
@@ -46,12 +47,15 @@ export default function Dashboard() {
 
   if (orders.length === 0)
     return (
-      <StatePanel
-        variant="empty"
-        title="Todavía no hay pedidos"
-        description="Cuando alguien compre, vas a ver acá los ingresos y los pedidos."
-        action={<DemoOrders onDone={retry} />}
-      />
+      <div className="space-y-6">
+        <StatePanel
+          variant="empty"
+          title="Todavía no hay pedidos"
+          description="Cuando alguien compre, vas a ver acá los ingresos y los pedidos."
+          action={<DemoOrders onDone={retry} />}
+        />
+        <BackupCard />
+      </div>
     );
 
   const kpis = [
@@ -131,6 +135,8 @@ export default function Dashboard() {
           ))}
         </ul>
       </section>
+
+      <BackupCard />
     </div>
   );
 }

@@ -86,6 +86,7 @@ La lista pensaba en apps con servidor propio, base SQL y cookies. Domus Deco es 
 
 - **Encontré:** no hay backups. Hoy casi no hay nada que respaldar: el catálogo y los pedidos todavía viven en el navegador y en Firestore solo se guarda el perfil (`users`). El código está respaldado por GitHub.
 - **No pude hacerlo:** las copias de seguridad programadas de Firestore **requieren el plan Blaze** (lo dice la documentación de Firebase: «This feature requires the Blaze pricing plan»).
+- **Mientras tanto (plan gratuito):** el panel tiene una tarjeta «Copia de seguridad» que baja un archivo con productos, fotos, categorías y pedidos. Hacela una vez por semana y guardala fuera de la computadora. No hay restauración automática.
 - **Te toca:** cuando pases a Blaze (paso 8) y **antes del primer cobro real**, creá una programación diaria en Firestore → Copias de seguridad (la retención llega hasta 14 semanas). Guía: <https://firebase.google.com/docs/firestore/backups>.
 
 ## 5. Validar lo que escriben

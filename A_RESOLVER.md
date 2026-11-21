@@ -28,6 +28,10 @@ Lista viva de lo que falta para que Domus Deco venda de verdad. Regla: **no se c
 
 ---
 
+- [x] **Caché en Hosting (`firebase.json`).** Los archivos con hash en el nombre (`/assets/**`) se guardan un año en el navegador; el video y demás de `/media/**`, 7 días; las páginas (`/`, `/tienda`, `/producto/...`, `/index.html`) siempre se revalidan, así que después de publicar nadie queda con una versión vieja. Las cuatro reglas no se pisan entre sí; las probé en el emulador de Hosting (cada ruta devolvió el `Cache-Control` esperado). Efecto: las visitas que vuelven bajan mucho menos, y rinde más tu cuota diaria de 360 MB.
+- [x] **Copia de seguridad a mano.** En `/admin` (el panel) hay una tarjeta «Copia de seguridad»: descarga un archivo `.json` con productos (con todas sus fotos), categorías y pedidos reales. Funciona en el plan gratuito. **Hacela una vez por semana y guardala fuera de la computadora.** Código: `src/data/backup.ts`, `src/components/admin/BackupCard.tsx`. Límite: **todavía no hay botón para restaurar**; el archivo tiene todo para reconstruir los datos, pero hoy eso se haría con un script aparte. Si algún día hace falta, se pide.
+- [ ] **Probar la copia:** bajala, abrila con un editor de texto y fijate que tenga tus productos y pedidos. Las copias automáticas de Firebase siguen necesitando el plan Blaze (ver `SEGURIDAD.md`, punto 4).
+
 ## Probar antes de publicar (lo tenés que hacer vos)
 
 **Para esta tanda (miniaturas, compra sin cuenta, foto por color):**

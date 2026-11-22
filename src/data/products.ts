@@ -115,6 +115,7 @@ export function productFromData(id: string, x: Partial<Product>): Product {
     stock: x.stock,
     stockBy: x.stockBy,
     active: x.active,
+    featured: x.featured,
     custom: true,
   };
 }

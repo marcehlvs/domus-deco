@@ -40,6 +40,7 @@ interface FormState {
   sizes: string;
   colors: { name: string; hex: string }[];
   active: boolean;
+  featured: boolean;
 }
 type Errors = Partial<Record<"name" | "price" | "discount" | "stock" | "image" | "extras" | "sizes" | "colors", string>>;
 
@@ -59,6 +60,7 @@ const empty: FormState = {
   sizes: "",
   colors: [],
   active: true,
+  featured: false,
 };
 
 const fromProduct = (p: Product, gallery: { main: string; extras: GalleryPhoto[] }): FormState => ({
@@ -78,6 +80,7 @@ const fromProduct = (p: Product, gallery: { main: string; extras: GalleryPhoto[]
   sizes: p.sizes.join(", "),
   colors: p.colors.map((c) => ({ ...c })),
   active: p.active !== false,
+  featured: p.featured === true,
 });
 
 const parseSizes = (text: string) => text.split(",").map((s) => s.trim().replace(/\|/g, "/")).filter(Boolean);
@@ -264,6 +267,8 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
           sizes: parseSizes(form.sizes),
           colors,
           active: form.active,
+          // Solo se guarda cuando está marcado: así los productos sin marca no llevan el campo.
+          featured: form.featured ? true : undefined,
         },
         id,
         form.extras.map((x) => ({ src: x.src, ...(known(x.color) ? { color: x.color } : {}) })),
@@ -405,6 +410,14 @@ function Editor({ id, initial }: { id?: string; initial: FormState }) {
           <label className="flex min-h-11 cursor-pointer items-center gap-3">
             <input type="checkbox" checked={form.active} onChange={(e) => set("active", e.target.checked)} className="size-5 accent-primary" />
             <span>Visible en la tienda</span>
+          </label>
+
+          <label className="flex min-h-11 cursor-pointer items-start gap-3">
+            <input type="checkbox" checked={form.featured} onChange={(e) => set("featured", e.target.checked)} className="mt-0.5 size-5 accent-primary" />
+            <span>
+              Destacado en el Inicio
+              <span className="block text-sm text-muted">Aparece primero. Si marcás menos de 12, el resto se completa al azar con productos que tengan stock.</span>
+            </span>
           </label>
         </div>
       </div>

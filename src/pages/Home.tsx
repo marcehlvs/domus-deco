@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { ProductCard, productGrid } from "../components/product/ProductCard";
@@ -8,14 +9,17 @@ import { Carousel } from "../components/ui/Carousel";
 import { Card } from "../components/ui/Card";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
 import { fetchProducts } from "../data/products";
+import { pickFeatured } from "../lib/catalog";
 import { useAsync } from "../lib/useAsync";
 import { useCategories } from "../store/categories";
 
 function Featured() {
   const { state, retry } = useAsync(() => fetchProducts(), []);
+  // Se elige una sola vez por carga de datos: no cambia de lugar mientras la persona mira la página.
+  const featured = useMemo(() => (state.status === "success" ? pickFeatured(state.data, 12) : []), [state]);
 
-  // Si todavía no hay productos, la sección no se muestra (la tienda ya tiene su propio estado vacío).
-  if (state.status === "success" && state.data.length === 0) return null;
+  // Si no hay productos para mostrar, la sección no se muestra (la tienda ya tiene su propio estado vacío).
+  if (state.status === "success" && featured.length === 0) return null;
 
   return (
     <section aria-labelledby="destacados" className="space-y-5">
@@ -55,7 +59,7 @@ function Featured() {
 
       {state.status === "success" && (
         <Carousel label="Destacados">
-          {state.data.slice(0, 12).map((p) => (
+          {featured.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
         </Carousel>

@@ -46,6 +46,8 @@ export interface Product {
   stockBy?: Record<string, number>;
   /** false = oculto en la tienda. Sin valor se considera activo. */
   active?: boolean;
+  /** true = la dueña lo eligió para el Inicio: aparece primero en «Destacados». Sin valor = no. */
+  featured?: boolean;
   /** true = cargado desde el panel de administración (los de muestra viven en el código). */
   custom?: boolean;
 }
@@ -86,6 +88,21 @@ export const isSoldOut = (p: Product) => {
   const t = totalStock(p);
   return t !== undefined && t <= 0;
 };
+/**
+ * Productos para «Destacados» del Inicio: primero los que la dueña marcó (en el orden del catálogo)
+ * y el resto se completa al azar. Los agotados no se muestran. `random` se puede pasar para probarlo.
+ */
+export function pickFeatured(products: Product[], max: number, random: () => number = Math.random): Product[] {
+  const available = products.filter((p) => !isSoldOut(p));
+  const marked = available.filter((p) => p.featured);
+  const rest = available.filter((p) => !p.featured);
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [rest[i], rest[j]] = [rest[j], rest[i]];
+  }
+  return [...marked, ...rest].slice(0, max);
+}
+
 export const isLowStock = (p: Product) => {
   const t = totalStock(p);
   return t !== undefined && t > 0 && t <= LOW_STOCK;

@@ -163,6 +163,7 @@ export default function ProductsAdmin() {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {p.active === false ? <Badge tone="warning">Oculto en la tienda</Badge> : <Badge tone="success">Visible</Badge>}
+                    {p.featured && <Badge>Destacado</Badge>}
                     {isSoldOut(p) ? (
                       <Badge tone="danger">Sin stock</Badge>
                     ) : isLowStock(p) ? (

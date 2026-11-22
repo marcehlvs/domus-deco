@@ -16,13 +16,16 @@ import Pending from "./pages/Pending";
 // Solo el Inicio viaja en el primer archivo. Cada pantalla se descarga al entrar (el panel de administración, solo para quien entra a /admin).
 // Con la intro todavía visible, la tienda y la ficha se pueden ir bajando detrás.
 const Account = lazyRoute(() => import("./pages/Account"));
-const Cart = lazyRoute(() => import("./pages/Cart"));
+const loadCart = () => import("./pages/Cart");
+const Cart = lazyRoute(loadCart);
 const Checkout = lazyRoute(() => import("./pages/Checkout"));
 const OrderPlaced = lazyRoute(() => import("./pages/OrderPlaced"));
 const Legal = lazyRoute(() => import("./pages/Legal"));
 const Login = lazyRoute(() => import("./pages/Login"));
-const ProductDetail = lazyRoute(() => import("./pages/ProductDetail"));
-const Shop = lazyRoute(() => import("./pages/Shop"));
+const loadProductDetail = () => import("./pages/ProductDetail");
+const ProductDetail = lazyRoute(loadProductDetail);
+const loadShop = () => import("./pages/Shop");
+const Shop = lazyRoute(loadShop);
 const Styleguide = lazyRoute(() => import("./pages/Styleguide"));
 const AdminGuard = lazyRoute(() => import("./components/admin/AdminGuard"));
 const AdminLayout = lazyRoute(() => import("./components/admin/AdminLayout"));
@@ -32,6 +35,14 @@ const ProductForm = lazyRoute(() => import("./pages/admin/ProductForm"));
 const CategoriesAdmin = lazyRoute(() => import("./pages/admin/CategoriesAdmin"));
 const OrdersAdmin = lazyRoute(() => import("./pages/admin/OrdersAdmin"));
 
+// Con el Inicio ya cargado y el navegador sin hacer nada, se bajan en segundo plano las pantallas que casi todos visitan después:
+// así, al tocar «Tienda» o un producto, abren sin esperar. Se omite con «ahorro de datos» activado.
+function preloadMainPages() {
+  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+  if (saveData) return;
+  for (const load of [loadShop, loadProductDetail, loadCart]) load().catch(() => undefined);
+}
+
 export default function App() {
   // La intro aparece solo al abrir la portada («/») y una vez por pestaña.
   // Los links directos (/tienda, /producto/…, /admin) entran sin intro.
@@ -40,6 +51,14 @@ export default function App() {
   // Las categorías se traen una vez al abrir la tienda.
   useEffect(() => {
     void useCategories.getState().load();
+  }, []);
+  useEffect(() => {
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(preloadMainPages, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = setTimeout(preloadMainPages, 2000);
+    return () => clearTimeout(t);
   }, []);
   const showIntro = pathname === "/" && !seen;
   const enter = useCallback(() => {

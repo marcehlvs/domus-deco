@@ -30,7 +30,7 @@ service cloud.firestore {
     // ---------- Productos: los ve cualquiera, solo administración los cambia ----------
     function validProduct(p) {
       return p.keys().hasOnly(['id', 'slug', 'name', 'brand', 'category', 'price', 'discount', 'stock', 'image', 'imageAlt',
-                               'description', 'sizes', 'colors', 'active', 'custom', 'stockBy', 'extraPhotos', 'fullImage', 'imageColor'])
+                               'description', 'sizes', 'colors', 'active', 'custom', 'stockBy', 'extraPhotos', 'fullImage', 'imageColor', 'featured'])
         && p.keys().hasAll(['name', 'category', 'price', 'image'])
         && text(p.name, 100)
         && textOrEmpty(p.get('brand', ''), 60)
@@ -43,6 +43,8 @@ service cloud.firestore {
         // `image` es la miniatura (~480 px) cuando fullImage == true; la foto grande vive en products/{id}/photos/main.
         && text(p.image, 700000)
         && (!('fullImage' in p) || p.fullImage is bool)
+        // Destacado en el Inicio (solo se guarda cuando es true).
+        && (!('featured' in p) || p.featured is bool)
         // Color de la paleta que muestra la foto principal (que coincida con una de `colors` lo cuida el panel).
         && (!('imageColor' in p) || text(p.imageColor, 40))
         // Cuántas fotos extra tiene (viven en products/{id}/photos; ver más abajo).

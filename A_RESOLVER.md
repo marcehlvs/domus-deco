@@ -37,7 +37,7 @@ Lista viva de lo que falta para que Domus Deco venda de verdad. Regla: **no se c
 **Para esta tanda (miniaturas, compra sin cuenta, foto por color):**
 
 - [ ] *(Solo si decidís encender la compra sin cuenta)* Firebase → Authentication → Método de acceso → **Anónimo** → Habilitar, y `guestCheckout: true` en `src/data/store.ts`. Hasta entonces no hace falta nada.
-- [ ] **Publicar las reglas de nuevo** (`firestore.rules`): ahora aceptan `fullImage`, `imageColor` y las fotos `products/{id}/photos/main` con su `color`. Sin esto no se puede guardar un producto con foto subida.
+- [ ] **Publicar las reglas de nuevo** (`firestore.rules`): ahora aceptan `featured` (casilla «Destacado en el Inicio»; **publicalas ANTES de marcar el primer destacado**, si no el guardado falla), `fullImage`, `imageColor` y las fotos `products/{id}/photos/main` con su `color`. Sin esto no se puede guardar un producto con foto subida.
 - [ ] **Achicar las fotos que ya cargaste:** `/admin/productos` → cartel «tienen la foto entera…» → «Achicar fotos del listado». Después abrí la tienda con DevTools → Network y mirá cuánto baja Firestore (la revisión estimaba ~6 MB por visita con 30 productos).
 - [ ] **Hacer un pedido** con una cuenta (checkout pide ingresar): ¿aparece en `/admin/pedidos` con el cartel y la insignia de pendientes?
 - [ ] **Foto por color:** editá un producto, indicá el color de la principal y de una extra, guardá; en la ficha, tocá cada color: ¿se mueve la foto?

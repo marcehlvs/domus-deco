@@ -14,6 +14,11 @@ describe("productFromData", () => {
     expect(p.fullImage).toBe(true);
     expect(p.imageColor).toBe("Gris");
   });
+
+  it("conserva la marca de destacado", () => {
+    expect(productFromData("abc", { name: "Toalla", price: 500, featured: true }).featured).toBe(true);
+    expect(productFromData("abc", { name: "Toalla", price: 500 }).featured).toBeUndefined();
+  });
 });
 
 describe("needsThumbnail", () => {

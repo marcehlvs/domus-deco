@@ -9,11 +9,13 @@ import {
   finalPrice,
   hasDiscount,
   isLowStock,
+  pickFeatured,
   isSoldOut,
   isVariantSoldOut,
   totalStock,
   unitsFor,
   variantKey,
+  type Product,
 } from "./catalog";
 
 describe("descuento", () => {
@@ -140,5 +142,37 @@ describe("catalog.ts es autosuficiente", () => {
     const source = readFileSync(new URL("./catalog.ts", import.meta.url), "utf8");
     const imports = [...source.matchAll(/^import\s+(?!type\b)[^;]*from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
     expect(imports).toEqual([]);
+  });
+});
+
+describe("pickFeatured", () => {
+  const item = (id: string, over: Partial<Product> = {}) => sheets({ id, slug: id, name: id, ...over });
+  const ids = (list: Product[]) => list.map((p) => p.id);
+  const noShuffle = () => 0.999; // con este valor el mezclado no mueve nada
+
+  it("pone primero los marcados, en el orden del catálogo, y completa con el resto", () => {
+    const list = [item("a"), item("b", { featured: true }), item("c"), item("d", { featured: true })];
+    expect(ids(pickFeatured(list, 3, noShuffle))).toEqual(["b", "d", "a"]);
+  });
+
+  it("no muestra productos agotados, ni siquiera los marcados", () => {
+    const list = [item("a", { stockBy: {} }), item("b", { featured: true, stockBy: {} }), item("c")];
+    expect(ids(pickFeatured(list, 5, noShuffle))).toEqual(["c"]);
+  });
+
+  it("devuelve todos si hay menos que el máximo, sin repetir ni perder ninguno aunque se mezcle", () => {
+    const list = ["a", "b", "c", "d", "e"].map((id) => item(id));
+    const picked = pickFeatured(list, 12, () => 0.3);
+    expect([...ids(picked)].sort()).toEqual(["a", "b", "c", "d", "e"]);
+  });
+
+  it("respeta el máximo y no modifica la lista original", () => {
+    const list = ["a", "b", "c", "d"].map((id) => item(id));
+    expect(pickFeatured(list, 2, () => 0.1)).toHaveLength(2);
+    expect(ids(list)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("sin productos devuelve una lista vacía", () => {
+    expect(pickFeatured([], 12)).toEqual([]);
   });
 });

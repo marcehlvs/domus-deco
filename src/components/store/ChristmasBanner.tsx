@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Gift } from "lucide-react";
 import { ProductCard } from "../product/ProductCard";
+import { Badge } from "../ui/Badge";
 import { Card } from "../ui/Card";
 import { Carousel } from "../ui/Carousel";
 import { fetchProducts } from "../../data/products";
@@ -30,17 +31,20 @@ export function ChristmasBanner() {
 
   return (
     <section aria-labelledby="navidad" className="space-y-5">
-      <Card className="flex flex-col gap-3 bg-alt md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
+      <Card className="flex flex-col gap-2 bg-alt p-4 md:flex-row md:items-center md:justify-between md:p-5">
+        <div className="space-y-2">
           <h2 id="navidad" className="flex items-center gap-2 text-2xl md:text-3xl">
             <Gift aria-hidden className="size-6 text-primary" />
             {category.name}
           </h2>
           {lastOrderDate &&
             (expired ? (
-              <p className="text-muted">Ya no llegamos con la entrega antes de Navidad. Podés pedir igual y coordinamos la fecha.</p>
+              <p className="text-sm text-muted md:text-base">Ya no llegamos con la entrega antes de Navidad. Podés pedir igual y coordinamos la fecha.</p>
             ) : (
-              <p className="font-medium">Pedí hasta el {longDay.format(parse(lastOrderDate))} y te llega antes de Navidad.</p>
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm md:text-base">
+                <Badge tone="warning">Pedí hasta el {longDay.format(parse(lastOrderDate))}</Badge>
+                <span className="text-muted">y te llega antes de Navidad</span>
+              </p>
             ))}
         </div>
         <Link to={`/tienda?categoria=${slug}`} className="inline-flex min-h-11 items-center gap-1 rounded-control font-medium text-primary hover:text-accent">
@@ -48,7 +52,7 @@ export function ChristmasBanner() {
           <ArrowRight aria-hidden className="size-4" />
         </Link>
       </Card>
-      <Carousel label={category.name} autoPlay>
+      <Carousel label={category.name}>
         {state.data.slice(0, 12).map((p) => (
           <ProductCard key={p.id} product={p} />
         ))}

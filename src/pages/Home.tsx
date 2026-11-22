@@ -54,7 +54,7 @@ function Featured() {
       )}
 
       {state.status === "success" && (
-        <Carousel label="Destacados" autoPlay>
+        <Carousel label="Destacados">
           {state.data.slice(0, 12).map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
@@ -97,7 +97,7 @@ export default function Home() {
         <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-4">
           {categories.map((c) => (
             <Link key={c.slug} to={`/tienda?categoria=${c.slug}`} className="group block rounded-card">
-              <Card className="flex h-full flex-col justify-between gap-6 transition-colors group-hover:bg-alt">
+              <Card className="flex h-full flex-col justify-between gap-3 p-4 transition-colors group-hover:bg-alt md:gap-5 md:p-5">
                 <div>
                   <p className="font-display text-lg">{c.name}</p>
                   <p className="text-sm text-muted">{c.text}</p>

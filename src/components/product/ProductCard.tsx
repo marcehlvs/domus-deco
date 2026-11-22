@@ -11,8 +11,8 @@ export const productGrid = "grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:gr
 export function ProductCard({ product }: { product: Product }) {
   const soldOut = isSoldOut(product);
   return (
-    <Link to={`/producto/${product.slug}`} className="group block rounded-card">
-      <Card className="h-full overflow-hidden p-0 transition-colors group-hover:bg-alt">
+    <Link to={`/producto/${product.slug}`} className="group block h-full rounded-card">
+      <Card className="flex h-full flex-col overflow-hidden p-0 transition-colors group-hover:bg-alt">
         <div className="relative">
           <img
             src={product.image}
@@ -33,10 +33,10 @@ export function ProductCard({ product }: { product: Product }) {
             </span>
           )}
         </div>
-        <div className="space-y-1 p-4">
+        <div className="flex flex-1 flex-col gap-1 p-4">
           {product.brand && <p className="text-sm text-muted">{product.brand}</p>}
           <p className="font-medium leading-snug">{product.name}</p>
-          <Price product={product} className="pt-1" />
+          <Price product={product} className="mt-auto pt-1" />
         </div>
       </Card>
     </Link>

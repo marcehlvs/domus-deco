@@ -1,33 +1,26 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
-import { nextStep, shouldAutoPlay } from "../../lib/autoplay";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../../lib/cn";
-import { Button } from "./Button";
 
 const arrow =
   "absolute top-1/3 z-10 hidden size-11 items-center justify-center rounded-full border border-line bg-surface text-ink shadow-sm transition-colors hover:bg-alt disabled:pointer-events-none disabled:opacity-0 md:inline-flex";
 
 /**
  * Carrusel de tarjetas: se desliza con el dedo, con las flechas o con el teclado (flechas ← →).
- * Muestra un pedacito de la tarjeta siguiente para que se note que hay más.
- *
- * Con `autoPlay` avanza solo cada `interval` ms y, al llegar al final, vuelve al principio. Se frena si la persona
- * tiene «reducir movimiento», mientras pasa el mouse, toca o enfoca el carrusel, con la pestaña en segundo plano
- * y cuando aprieta «Pausar» (el botón es obligatorio para quien no puede seguir un movimiento automático).
+ * Muestra un pedacito de la tarjeta siguiente y una barra de progreso fina para que se note que hay más.
+ * No se mueve solo: así no hace falta un botón de pausa y nadie pierde el hilo de lo que está mirando.
  */
-export function Carousel({ label, children, autoPlay = false, interval = 5000 }: { label: string; children: ReactNode[]; autoPlay?: boolean; interval?: number }) {
+export function Carousel({ label, children }: { label: string; children: ReactNode[] }) {
   const track = useRef<HTMLUListElement>(null);
   const [edge, setEdge] = useState({ start: true, end: true });
-  const [pausedByUser, setPausedByUser] = useState(false);
-  const [interacting, setInteracting] = useState(false);
-  const [tabHidden, setTabHidden] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
-  const touchTimer = useRef<number>(undefined);
+  // Barra de progreso: ancho = parte visible del total; posición = cuánto se desplazó.
+  const [thumb, setThumb] = useState({ left: 0, width: 100 });
 
   const measure = useCallback(() => {
     const el = track.current;
     if (!el) return;
     setEdge({ start: el.scrollLeft <= 2, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2 });
+    setThumb({ left: (el.scrollLeft / el.scrollWidth) * 100, width: Math.min(100, (el.clientWidth / el.scrollWidth) * 100) });
   }, []);
 
   useEffect(() => {
@@ -39,36 +32,6 @@ export function Carousel({ label, children, autoPlay = false, interval = 5000 }:
     return () => observer.disconnect();
   }, [measure, children.length]);
 
-  // «Reducir movimiento» y pestaña en segundo plano: se leen al montar y se siguen mientras cambian.
-  useEffect(() => {
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const onMotion = () => setReducedMotion(query.matches);
-    const onVisibility = () => setTabHidden(document.hidden);
-    onMotion();
-    onVisibility();
-    query.addEventListener("change", onMotion);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      query.removeEventListener("change", onMotion);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.clearTimeout(touchTimer.current);
-    };
-  }, []);
-
-  const noOverflow = edge.start && edge.end;
-  const playing = shouldAutoPlay({ enabled: autoPlay, reducedMotion, pausedByUser, interacting, tabHidden, hasOverflow: !noOverflow });
-
-  useEffect(() => {
-    if (!playing) return;
-    const id = window.setInterval(() => {
-      const el = track.current;
-      if (!el) return;
-      const step = nextStep(el.scrollLeft, el.clientWidth, el.scrollWidth);
-      el.scrollTo({ left: step === null ? 0 : el.scrollLeft + step, behavior: "smooth" });
-    }, interval);
-    return () => window.clearInterval(id);
-  }, [playing, interval]);
-
   const move = (dir: 1 | -1) => {
     const el = track.current;
     if (!el) return;
@@ -76,28 +39,12 @@ export function Carousel({ label, children, autoPlay = false, interval = 5000 }:
     el.scrollBy({ left: dir * el.clientWidth * 0.85, behavior: reduce ? "auto" : "smooth" });
   };
 
-  const showControl = autoPlay && !reducedMotion && !noOverflow;
+  const noOverflow = edge.start && edge.end;
   return (
-    <div
-      role="group"
-      aria-roledescription="carrusel"
-      aria-label={label}
-      className="relative"
-      onMouseEnter={() => setInteracting(true)}
-      onMouseLeave={() => setInteracting(false)}
-      onFocus={() => setInteracting(true)}
-      onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setInteracting(false)}
-      // Con el dedo no hay «mouse afuera»: se frena al tocar y se reanuda unos segundos después.
-      onTouchStart={() => {
-        setInteracting(true);
-        window.clearTimeout(touchTimer.current);
-        touchTimer.current = window.setTimeout(() => setInteracting(false), 8000);
-      }}
-    >
+    <div role="group" aria-roledescription="carrusel" aria-label={label} className="relative">
       <ul
         ref={track}
         tabIndex={0}
-        aria-live={playing ? "off" : "polite"}
         aria-label={`${label}: deslizá para ver más`}
         onScroll={measure}
         onKeyDown={(e) => {
@@ -116,6 +63,9 @@ export function Carousel({ label, children, autoPlay = false, interval = 5000 }:
       </ul>
       {!noOverflow && (
         <>
+          <div aria-hidden className="relative mt-3 h-1 rounded-full bg-line">
+            <div className="absolute inset-y-0 rounded-full bg-primary" style={{ left: `${thumb.left}%`, width: `${thumb.width}%` }} />
+          </div>
           <button type="button" aria-label="Anterior" disabled={edge.start} onClick={() => move(-1)} className={cn(arrow, "-left-5")}>
             <ChevronLeft aria-hidden className="size-5" />
           </button>
@@ -123,14 +73,6 @@ export function Carousel({ label, children, autoPlay = false, interval = 5000 }:
             <ChevronRight aria-hidden className="size-5" />
           </button>
         </>
-      )}
-      {showControl && (
-        <div className="mt-1 flex justify-end">
-          <Button variant="ghost" aria-pressed={pausedByUser} onClick={() => setPausedByUser((p) => !p)}>
-            {pausedByUser ? <Play aria-hidden className="size-4" /> : <Pause aria-hidden className="size-4" />}
-            {pausedByUser ? "Reanudar movimiento" : "Pausar movimiento"}
-          </Button>
-        </div>
       )}
     </div>
   );

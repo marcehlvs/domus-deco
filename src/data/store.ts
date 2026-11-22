@@ -16,7 +16,7 @@ export const store = {
   // y tiene productos visibles; desaparece pasada la fecha «showUntil».
   christmas: {
     slug: "navidad", // la dirección de la categoría: se genera del nombre «Navidad»
-    lastOrderDate: "", // AAAA-MM-DD: último día para pedir y recibir a tiempo. Vacío = no se muestra el aviso
+    lastOrderDate: "2026-12-23", // AAAA-MM-DD: último día para pedir y recibir a tiempo. Vacío = no se muestra el aviso
     showUntil: "2026-12-25", // AAAA-MM-DD: hasta este día (inclusive) se ve la sección
   },
 } as const;

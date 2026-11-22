@@ -10,6 +10,7 @@ import { deliveryLabels } from "../../data/delivery";
 import { deductsStock, fetchOrders, setOrderStatus, statusLabels, statuses, type Order, type OrderStatus } from "../../data/orders";
 import { formatDay, formatPrice } from "../../lib/format";
 import { useAsync } from "../../lib/useAsync";
+import { ageLabel, isStale } from "../../lib/orderAge";
 import { usePendingOrders } from "../../store/pendingOrders";
 import { customerWhatsappLink } from "../../lib/whatsapp";
 import { cn } from "../../lib/cn";
@@ -81,7 +82,11 @@ export default function OrdersAdmin() {
 
   const shown = filter === "todos" ? orders : orders.filter((o) => o.status === filter);
   const count = (s: OrderStatus) => orders.filter((o) => o.status === s).length;
-  const pending = orders.filter((o) => !o.demo && o.status === "pendiente").length;
+  const pendingOrders = orders.filter((o) => !o.demo && o.status === "pendiente");
+  const pending = pendingOrders.length;
+  const now = new Date();
+  const oldest = pendingOrders.reduce<string | null>((min, o) => (min === null || o.createdAt < min ? o.createdAt : min), null);
+  const stale = pendingOrders.filter((o) => isStale(o.createdAt, now)).length;
 
   return (
     <div className="space-y-5">
@@ -94,6 +99,11 @@ export default function OrdersAdmin() {
               {pending} {pending === 1 ? "pedido pendiente" : "pedidos pendientes"} de pago.
             </strong>{" "}
             <span className="text-muted">Escribile a cada persona por WhatsApp para coordinar el pago.</span>
+            {stale > 0 && oldest && (
+              <span className="mt-1 block font-semibold">
+                {stale === 1 ? "1 lleva" : `${stale} llevan`} más de un día sin atender (el más antiguo es de {ageLabel(oldest, now)}).
+              </span>
+            )}
           </p>
           {filter !== "pendiente" && (
             <Button variant="secondary" onClick={() => setFilter("pendiente")}>
@@ -137,6 +147,11 @@ export default function OrdersAdmin() {
                 <p>
                   <span className="font-medium">#{o.number}</span> · {o.customer.name}
                   <span className="text-muted"> · {formatDay(o.createdAt)}</span>
+                  {!o.demo && o.status === "pendiente" && (
+                    <span className="ml-2 align-middle">
+                      <Badge tone={isStale(o.createdAt, now) ? "warning" : "neutral"}>Sin atender · {ageLabel(o.createdAt, now)}</Badge>
+                    </span>
+                  )}
                   {o.demo && (
                     <span className="ml-2 align-middle">
                       <Badge>Ejemplo</Badge>

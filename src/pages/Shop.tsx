@@ -6,6 +6,7 @@ import { FiltersModal } from "../components/store/FiltersModal";
 import { Button, LinkButton } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Pagination } from "../components/ui/Pagination";
+import { Reveal } from "../components/ui/Reveal";
 import { Select } from "../components/ui/Select";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
 import { fetchProducts, finalPrice, isSoldOut, type Product } from "../data/products";
@@ -271,8 +272,10 @@ export default function Shop() {
           ) : (
             <>
               <div className={grid}>
-                {visible.map((p) => (
-                  <ProductCard key={p.id} product={p} />
+                {visible.map((p, i) => (
+                  <Reveal key={p.id} index={i} className="h-full">
+                    <ProductCard product={p} />
+                  </Reveal>
                 ))}
               </div>
               <Pagination page={page} totalPages={totalPages} onChange={goToPage} />

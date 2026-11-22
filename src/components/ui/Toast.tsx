@@ -26,8 +26,8 @@ export default function Toast() {
             key={toast.id}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
-            transition={{ duration: 0.18 }}
+            exit={{ opacity: 0, y: 12, transition: { duration: 0.12 } }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
             className="pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-card bg-primary py-1 pl-4 pr-1 text-on-primary shadow-pop"
           >
             {toast.kind === "warning" ? <TriangleAlert aria-hidden className="size-5 shrink-0" /> : <CheckCircle2 aria-hidden className="size-5 shrink-0" />}

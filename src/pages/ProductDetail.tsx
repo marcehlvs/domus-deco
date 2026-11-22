@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Bell, MessageCircle, Share2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Bell, Check, MessageCircle, Share2, ShoppingBag } from "lucide-react";
 import { Badge } from "../components/ui/Badge";
 import { Button, buttonStyles, LinkButton } from "../components/ui/Button";
 import { Skeleton, StatePanel } from "../components/ui/StatePanel";
@@ -79,10 +79,22 @@ function ProductView({ product }: { product: Product }) {
   const comboSoldOut = units !== undefined && units <= 0; // la medida y el color elegidos
   const comboLow = units !== undefined && units > 0 && units <= LOW_STOCK;
   const sizeOut = (s: string) => product.colors.every((c) => isVariantSoldOut(product, s, c.name));
+  // El botón confirma un instante («Agregado») además del aviso; vuelve solo.
+  const [added, setAdded] = useState(false);
+  useEffect(() => {
+    if (!added) return;
+    const t = setTimeout(() => setAdded(false), 1600);
+    return () => clearTimeout(t);
+  }, [added]);
   const addToCart = () => {
-    if (add(product, size, color)) show("Agregado al carrito", { to: "/carrito", label: "Ver carrito" });
+    if (add(product, size, color)) {
+      setAdded(true);
+      show("Agregado al carrito", { to: "/carrito", label: "Ver carrito" });
+    }
     else warn(comboSoldOut ? "Esa medida y color no tienen stock" : "Ya tenés en el carrito todo el stock disponible de esta combinación");
   };
+  const addLabel = comboSoldOut ? "Sin stock" : added ? "Agregado" : "Agregar al carrito";
+  const AddIcon = added ? Check : ShoppingBag;
   const share = async () => {
     const result = await shareProduct(product);
     if (result === "copied") show("Link copiado");
@@ -164,8 +176,8 @@ function ProductView({ product }: { product: Product }) {
 
         <div className="flex flex-wrap gap-3">
           <Button size="lg" className="hidden md:inline-flex" disabled={comboSoldOut} onClick={addToCart}>
-            <ShoppingBag aria-hidden className="size-5" />
-            {comboSoldOut ? "Sin stock" : "Agregar al carrito"}
+            <AddIcon aria-hidden className="size-5" />
+            {addLabel}
           </Button>
           {whatsapp && (
             <a
@@ -189,8 +201,8 @@ function ProductView({ product }: { product: Product }) {
       <div className="fixed inset-x-0 bottom-0 z-20 flex items-center gap-4 border-t border-line bg-bg/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur md:hidden">
         <Price product={product} size="lg" className="shrink-0" />
         <Button size="lg" className="flex-1" disabled={comboSoldOut} onClick={addToCart}>
-          <ShoppingBag aria-hidden className="size-5" />
-          {comboSoldOut ? "Sin stock" : "Agregar al carrito"}
+          <AddIcon aria-hidden className="size-5" />
+          {addLabel}
         </Button>
       </div>
     </div>

@@ -10,11 +10,13 @@ import { cn } from "../../lib/cn";
 export default function Toast() {
   const { toast, hide } = useToast();
 
+  // Se reinicia el reloj de 5 s solo cuando aparece un aviso nuevo (cambia el id).
+  const id = toast?.id;
   useEffect(() => {
-    if (!toast) return;
+    if (id === undefined) return;
     const t = setTimeout(hide, 5000);
     return () => clearTimeout(t);
-  }, [toast?.id]);
+  }, [id, hide]);
 
   return (
     <div role="status" className="pointer-events-none fixed inset-x-4 bottom-24 z-40 flex justify-center md:bottom-6 md:justify-end">

@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
 import Toast from "../ui/Toast";
+import { StatePanel } from "../ui/StatePanel";
 import { cn } from "../../lib/cn";
 
 export default function Layout() {
@@ -18,7 +20,9 @@ export default function Layout() {
       </a>
       <Header />
       <main id="contenido" className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-6 md:py-12 xl:px-8">
-        <Outlet />
+        <Suspense fallback={<StatePanel variant="loading" title="Cargando" />}>
+          <Outlet />
+        </Suspense>
       </main>
       <Footer />
       <Toast />

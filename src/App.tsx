@@ -10,19 +10,20 @@ import { StatePanel } from "./components/ui/StatePanel";
 import { lazyRoute } from "./lib/lazyRoute";
 import { legal } from "./data/legal";
 import { store } from "./data/store";
-import Account from "./pages/Account";
-import Cart from "./pages/Cart";
-import Checkout from "./pages/Checkout";
-import OrderPlaced from "./pages/OrderPlaced";
-import Legal from "./pages/Legal";
-import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Pending from "./pages/Pending";
-import ProductDetail from "./pages/ProductDetail";
-import Shop from "./pages/Shop";
-import Styleguide from "./pages/Styleguide";
 
-// El panel de administración se descarga solo al entrar a /admin: quien solo compra no lo baja.
+// Solo el Inicio viaja en el primer archivo. Cada pantalla se descarga al entrar (el panel de administración, solo para quien entra a /admin).
+// Con la intro todavía visible, la tienda y la ficha se pueden ir bajando detrás.
+const Account = lazyRoute(() => import("./pages/Account"));
+const Cart = lazyRoute(() => import("./pages/Cart"));
+const Checkout = lazyRoute(() => import("./pages/Checkout"));
+const OrderPlaced = lazyRoute(() => import("./pages/OrderPlaced"));
+const Legal = lazyRoute(() => import("./pages/Legal"));
+const Login = lazyRoute(() => import("./pages/Login"));
+const ProductDetail = lazyRoute(() => import("./pages/ProductDetail"));
+const Shop = lazyRoute(() => import("./pages/Shop"));
+const Styleguide = lazyRoute(() => import("./pages/Styleguide"));
 const AdminGuard = lazyRoute(() => import("./components/admin/AdminGuard"));
 const AdminLayout = lazyRoute(() => import("./components/admin/AdminLayout"));
 const Dashboard = lazyRoute(() => import("./pages/admin/Dashboard"));

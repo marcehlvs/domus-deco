@@ -21,7 +21,7 @@ export default function Cart() {
     items.forEach((i) => {
       if (!state.data.some((p) => p.id === i.productId)) remove(i.key);
     });
-  }, [state]);
+  }, [state, items, remove]);
 
   const title = <h1 className="text-3xl md:text-4xl">Carrito</h1>;
 

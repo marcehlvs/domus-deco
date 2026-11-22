@@ -17,7 +17,7 @@ const periods = [7, 30, 90] as const;
 export default function Dashboard() {
   const { state, retry } = useAsync(() => fetchOrders(), []);
   const [days, setDays] = useState<(typeof periods)[number]>(30);
-  const orders = state.status === "success" ? state.data : [];
+  const orders = useMemo(() => (state.status === "success" ? state.data : []), [state]);
   const stats = useMemo(() => summarize(orders, days), [orders, days]);
 
   if (state.status === "loading")

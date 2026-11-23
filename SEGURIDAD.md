@@ -51,11 +51,11 @@ La lista pensaba en apps con servidor propio, base SQL y cookies. Domus Deco es 
 ## 1. Frenar bots con captcha
 
 - **Encontré:** nada. Cualquiera podía golpear Auth y Firestore desde un script.
-- **Hice:** agregué **Firebase App Check con reCAPTCHA v3**. No muestra ningún captcha: Google puntúa en silencio si el pedido viene de tu sitio. Está en `src/lib/firebase.ts` y se activa solo cuando existe `VITE_RECAPTCHA_SITE_KEY` (sin la variable, la tienda funciona igual). La CSP ya permite los dominios de reCAPTCHA.
+- **Hice:** agregué **Firebase App Check con reCAPTCHA Enterprise** (Google Cloud lo renombró «Fraud Defense»; el reCAPTCHA v3 clásico está en retirada y Firebase ya no deja registrar claves nuevas). No muestra ningún captcha: Google puntúa en silencio si el pedido viene de tu sitio. Está en `src/lib/firebase.ts` y se activa solo cuando existe `VITE_RECAPTCHA_SITE_KEY` (sin la variable, la tienda funciona igual). La CSP ya permite los dominios de reCAPTCHA.
 - **Te toca:**
-  1. Crear una clave **reCAPTCHA v3** en <https://www.google.com/recaptcha/admin> con los dominios `domusdeco.web.app`, `domusdeco.firebaseapp.com`, tu dominio propio y `localhost`.
-  2. En Firebase → **App Check** → tu app web → registrá reCAPTCHA v3 con la **clave secreta** (la secreta va solo ahí).
-  3. Poné la **clave de sitio** (la pública) en `.env.local` como `VITE_RECAPTCHA_SITE_KEY` (hay un `.env.example`) y publicá.
+  1. En **Google Cloud Console** (el mismo proyecto de Firebase) buscá **reCAPTCHA Enterprise** (o «Fraud Defense») y habilitá la API. Creá una clave de tipo **Sitio web**, **basada en puntuación** (sin casilla «No soy un robot»), con los dominios `domusdeco.web.app`, `domusdeco.firebaseapp.com`, tu dominio propio y `localhost`.
+  2. Copiá el **ID de la clave** (es la clave de sitio, pública). En Firebase → **App Check** → tu app web → **Fraud Defense (reCAPTCHA Enterprise)** → pegala en «Clave de sitio» y guardá. Enterprise no usa clave secreta.
+  3. Poné esa misma clave de sitio en `.env.local` como `VITE_RECAPTCHA_SITE_KEY` (hay un `.env.example`) y publicá.
   4. Mirá las métricas de App Check unos días. Recién cuando casi todo el tráfico figure como «verificado», activá **Hacer cumplir** (Enforce) en Authentication y Firestore. Antes de eso, App Check no bloquea a nadie. **Ojo:** al activar «Hacer cumplir» en Firestore, el script `scripts/prerender.mjs` (que lee los productos al hacer `npm run build` para armar las vistas previas al compartir) deja de poder leerlos sin sesión; el sitio sigue funcionando, pero esas vistas previas no se generan. Se resuelve con una Cloud Function (plan Blaze).
   5. Para trabajar en tu computadora, App Check imprime un **token de depuración** en la consola del navegador; se registra en la consola de Firebase (App Check → Administrar tokens de depuración).
 

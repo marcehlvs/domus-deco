@@ -123,7 +123,7 @@ if (apiKey) {
   } catch (e) {
     r = { status: 0, text: String(e?.message ?? e) };
   }
-  if (r.status === 403 && /referer|referrer/i.test(r.text)) add("ok", "La API key rechaza pedidos que no vienen de tu sitio (está restringida a tus dominios)");
+  if (r.status === 401 || r.status === 403) add("ok", "Google rechaza usar tu API key desde afuera de tu sitio (está restringida)", `Respuesta ${r.status}: ${reason(r)}. Esto no prueba que el sitio real siga funcionando: probá ingresar con Google en una ventana de incógnito.`);
   else if (r.status === 200) add("warn", "La API key funciona desde cualquier lado: todavía no está restringida a tus sitios web", "Google Cloud → APIs y servicios → Credenciales → tu clave de navegador → Restricciones de la aplicación → Sitios web. Esperá unos minutos después de guardar.");
   else add("warn", `Prueba de la API key: respuesta inesperada ${r.status}`, reason(r));
 } else add("warn", "No se probó la API key: falta VITE_FIREBASE_API_KEY en .env.local");

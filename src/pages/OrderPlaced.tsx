@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, MessageCircle } from "lucide-react";
+import { ArrowLeft, Check, Copy, MessageCircle } from "lucide-react";
 import { OrderSummary } from "../components/orders/OrderSummary";
 import { Button, buttonStyles, LinkButton } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -11,6 +12,34 @@ import { useAsync } from "../lib/useAsync";
 import { whatsappLink } from "../lib/whatsapp";
 import { store } from "../data/store";
 import { useAuth } from "../store/auth";
+
+// Alias de pago con botón para copiarlo (en el celular es lo que más se usa).
+function PaymentAlias({ alias, methods }: { alias: string; methods: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(alias);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Sin permiso para copiar: el alias queda visible para copiarlo a mano.
+    }
+  };
+  return (
+    <div className="space-y-2 rounded-control border border-line bg-alt p-3">
+      <p className="text-sm font-medium">Pago: {methods}</p>
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-mono text-base font-semibold break-all">{alias}</span>
+        <Button variant="secondary" onClick={copy} aria-label={`Copiar el alias ${alias}`}>
+          {copied ? <Check aria-hidden className="size-4" /> : <Copy aria-hidden className="size-4" />}
+          {copied ? "Copiado" : "Copiar"}
+        </Button>
+      </div>
+      <p role="status" className="sr-only">{copied ? "Alias copiado" : ""}</p>
+      <p className="text-xs text-muted">Antes de pagar, confirmanos el total por WhatsApp: la entrega se suma aparte. Después mandanos el comprobante.</p>
+    </div>
+  );
+}
 
 const messageFor = (o: Order) =>
   [
@@ -86,6 +115,7 @@ export default function OrderPlaced() {
           <Card className="space-y-3 md:sticky md:top-24">
             <p className="font-medium">Siguiente paso</p>
             <p className="text-sm text-muted">Mandanos el pedido por WhatsApp y coordinamos el pago y la entrega.</p>
+            {store.payment.alias && <PaymentAlias alias={store.payment.alias} methods={store.payment.methods} />}
             {whatsapp ? (
               <a href={whatsapp} target="_blank" rel="noopener noreferrer" className={buttonStyles({ size: "lg", className: "w-full" })}>
                 <MessageCircle aria-hidden className="size-5" />

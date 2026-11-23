@@ -9,6 +9,11 @@ export const store = {
     facebook: "", // nombre de la página, el que aparece en facebook.com/…
     email: "domusdecostore@gmail.com",
   },
+  // Cómo se paga. El alias aparece en el pedido confirmado (con botón para copiarlo). Vacío = no se muestra.
+  payment: {
+    alias: "domusdeco.mp", // alias de Mercado Pago / CBU para transferencias
+    methods: "Transferencia o Mercado Pago",
+  },
   // Comprar sin crear cuenta. APAGADO a propósito: encenderlo abre una sesión anónima de Firebase en el checkout, y eso
   // pide activar «Anónimo» en Authentication y «Hacer cumplir» de App Check (ver SEGURIDAD.md). Apagado, el checkout pide ingresar.
   guestCheckout: false,

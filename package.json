@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
-    "check": "npm run lint && npm test && npm run build"
+    "check": "npm run lint && npm test && npm run build",
+    "probar:seguridad": "node scripts/probar-seguridad.mjs"
   },
   "dependencies": {
     "@fontsource-variable/jost": "^5.1.0",

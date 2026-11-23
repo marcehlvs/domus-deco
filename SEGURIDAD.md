@@ -253,3 +253,12 @@ La lista pensaba en apps con servidor propio, base SQL y cookies. Domus Deco es 
 ## Archivos de este cambio
 
 `firestore.rules` (nuevo) · `firebase.json` · `index.html` y `public/theme-init.js` · `src/lib/firebase.ts` · `src/lib/validate.ts` (nuevo) · `src/lib/throttle.ts` (nuevo) · `src/pages/Login.tsx` · `src/pages/admin/ProductForm.tsx` · `src/data/products.ts` · `src/store/auth.ts` · `src/App.tsx` · `.env.example` (nuevo) · `.github/dependabot.yml` (nuevo) · `SEGURIDAD.md` (este archivo)
+
+## Prueba desde afuera (`npm run probar:seguridad`)
+
+Un script (`scripts/probar-seguridad.mjs`) se hace pasar por un bot: le habla directo a Firestore, sin abrir el sitio ni iniciar sesión, e intenta leer pedidos, datos de clientas y carritos, crear pedidos, productos, categorías o administradoras. Todo eso tiene que ser rechazado. También avisa si la API key sigue sin restringir (la prueba con Authentication, porque Firestore no valida esa restricción: por eso las reglas y App Check son lo que de verdad protege los datos) y si App Check todavía no se hace cumplir.
+
+- Correlo después de publicar las reglas, después de restringir la API key y otra vez cuando actives «Hacer cumplir» de App Check (ahí el catálogo debería empezar a dar 403 y el script lo avisa).
+- Son unas 15 consultas, con lecturas de 1 documento: no gasta la cuota. No crea cuentas ni inicia sesión.
+- **Límite:** no prueba qué puede hacer una persona con sesión iniciada (una clienta mirando pedidos ajenos, por ejemplo). Eso se prueba con las reglas en el emulador de Firebase.
+- Nunca lo apuntes a un proyecto que no sea tuyo.
